@@ -81,7 +81,6 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
 
     try {
       const response = await fetchStations({
-        forceRefresh: mode === 'manual',
         region: nextRegion,
         fuelFilter,
         limit: 220,
@@ -93,7 +92,7 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
 
       startTransition(() => {
         setStations(response.stations);
-        setLastSyncAt(response.checkedAt ?? response.fetchedAt);
+        setLastSyncAt(response.fetchedAt);
         setSelectedStationId((currentId) =>
           response.stations.some((station) => station.id === currentId) ? currentId : null,
         );
