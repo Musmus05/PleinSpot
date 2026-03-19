@@ -77,6 +77,7 @@ export type Station = {
 };
 
 type FetchStationsOptions = {
+  forceRefresh?: boolean;
   fuelFilter: FuelFilter;
   limit?: number;
   region: {
@@ -98,11 +99,12 @@ const parser = new XMLParser({
 });
 
 export async function fetchStationsInRegion({
+  forceRefresh = false,
   fuelFilter,
   limit = 220,
   region,
 }: FetchStationsOptions) {
-  const { fetchedAt, stations } = await getCachedStations();
+  const { fetchedAt, stations } = await getCachedStations(forceRefresh);
   const visibleStations = stations.filter((station) => isStationVisible(station, region));
   const filteredByFuel =
     fuelFilter === 'all'
@@ -115,8 +117,8 @@ export async function fetchStationsInRegion({
   };
 }
 
-async function getCachedStations() {
-  if (cachedStations && cacheFetchedAt && Date.now() - Date.parse(cacheFetchedAt) < CACHE_TTL_MS) {
+async function getCachedStations(forceRefresh = false) {
+  if (!forceRefresh && cachedStations && cacheFetchedAt && Date.now() - Date.parse(cacheFetchedAt) < CACHE_TTL_MS) {
     return {
       fetchedAt: cacheFetchedAt,
       stations: cachedStations,

@@ -33,7 +33,7 @@ const DEFAULT_REGION: MapRegion = {
   longitudeDelta: 0.22,
 };
 
-type RefreshMode = 'initial' | 'manual' | 'background';
+type RefreshMode = 'initial' | 'manual' | 'filter';
 
 type AppShellProps = {
   autoLocateOnMount?: boolean;
@@ -56,9 +56,9 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isBackgroundRefreshing, setIsBackgroundRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
+  const [lastSnapshotAt, setLastSnapshotAt] = useState<string | null>(null);
+  const [lastCheckAt, setLastCheckAt] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [viewportToken, setViewportToken] = useState(0);
@@ -80,12 +80,11 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
       setIsLoading(true);
     } else if (mode === 'manual') {
       setIsRefreshing(true);
-    } else {
-      setIsBackgroundRefreshing(true);
     }
 
     try {
       const response = await fetchStations({
+        forceRefresh: mode === 'manual',
         region: nextRegion,
         fuelFilter,
         limit: 220,
@@ -97,11 +96,14 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
 
       startTransition(() => {
         setStations(response.stations);
-        setLastSyncAt(response.fetchedAt);
+        setLastSnapshotAt(response.fetchedAt);
         setSelectedStationId((currentId) =>
           response.stations.some((station) => station.id === currentId) ? currentId : null,
         );
       });
+      if (mode === 'manual') {
+        setLastCheckAt(new Date().toISOString());
+      }
       hasLoadedOnceRef.current = true;
       setErrorMessage(null);
     } catch (error) {
@@ -118,7 +120,6 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
       if (requestIdRef.current === currentRequestId) {
         setIsLoading(false);
         setIsRefreshing(false);
-        setIsBackgroundRefreshing(false);
       }
     }
   });
@@ -161,18 +162,10 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      loadStations(region, activeFuel, hasLoadedOnceRef.current ? 'manual' : 'initial');
+      loadStations(region, activeFuel, hasLoadedOnceRef.current ? 'filter' : 'initial');
     }, 320);
 
     return () => clearTimeout(timeoutId);
-  }, [activeFuel, loadStations, region]);
-
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      loadStations(region, activeFuel, 'background');
-    }, 90000);
-
-    return () => clearInterval(intervalId);
   }, [activeFuel, loadStations, region]);
 
   useEffect(() => {
@@ -290,9 +283,9 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
             <TopOverlay
               activeFuel={activeFuel}
               getStationDisplayPrice={(station) => getDisplayPrice(station, activeFuel)}
-              isRefreshing={isRefreshing || isBackgroundRefreshing}
+              isRefreshing={isRefreshing}
               language={language}
-              lastSyncAt={lastSyncAt}
+              lastSyncAt={lastCheckAt ?? lastSnapshotAt}
               onCenterUser={centerOnLocation}
               onChangeFuel={setActiveFuel}
               onChangeLanguage={setLanguage}

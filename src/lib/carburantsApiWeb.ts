@@ -2,6 +2,7 @@ import { FuelFilter, FUEL_OPTIONS } from './fuels';
 import { Station } from './carburantsApi';
 
 type FetchStationsOptions = {
+  forceRefresh?: boolean;
   fuelFilter: FuelFilter;
   limit?: number;
   region: {
@@ -20,11 +21,12 @@ type WebFuelData = {
 let cachedData: WebFuelData | null = null;
 
 export async function fetchStationsInRegionWeb({
+  forceRefresh = false,
   fuelFilter,
   limit = 220,
   region,
 }: FetchStationsOptions) {
-  const data = await getFuelData();
+  const data = await getFuelData(forceRefresh);
   const visibleStations = data.stations.filter((station) => isStationVisible(station, region));
   const filteredByFuel =
     fuelFilter === 'all'
@@ -37,12 +39,13 @@ export async function fetchStationsInRegionWeb({
   };
 }
 
-async function getFuelData() {
-  if (cachedData) {
+async function getFuelData(forceRefresh = false) {
+  if (!forceRefresh && cachedData) {
     return cachedData;
   }
 
-  const response = await fetch('/fuel-stations.json', {
+  const url = forceRefresh ? `/fuel-stations.json?t=${Date.now()}` : '/fuel-stations.json';
+  const response = await fetch(url, {
     cache: 'no-store',
   });
 

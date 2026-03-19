@@ -200,7 +200,7 @@ export function TopOverlay({
               <View style={styles.statCard}>
                 <Clock3 color={colors.sun} size={15} />
                 <View>
-                  <Text style={styles.statLabel}>{t.topOverlay.sync}</Text>
+                  <Text style={styles.statLabel}>{t.topOverlay.syncLabel}</Text>
                   <Text style={styles.statValue}>
                     {lastSyncAt ? formatTimestamp(lastSyncAt) : t.topOverlay.syncing}
                   </Text>
