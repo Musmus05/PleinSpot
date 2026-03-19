@@ -5,15 +5,22 @@ node_modules/
 
 # Expo
 .expo/
+.expo-shared/
 dist/
 dist-web/
 dist-web-test/
 web-build/
 expo-env.d.ts
 
+# caches
+.cache/
+.eslintcache
+coverage/
+
 
 # IDE
 .idea/
+.vscode/
 
 # Native
 .kotlin/
@@ -28,15 +35,30 @@ expo-env.d.ts
 .metro-health-check*
 
 # debug
+*.log
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+pnpm-debug.*
 
 # macOS
 .DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# temp
+*.tmp
+*.temp
 *.pem
 
+# generated public data
+public/fuel-stations.json
+
 # local env files
+.env
+.env.*
 .env*.local
 
 # typescript
