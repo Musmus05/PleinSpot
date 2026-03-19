@@ -46,7 +46,7 @@ export async function searchCities(query: string) {
 }
 
 function getApiBaseUrl() {
-  const configuredBaseUrl = getEnv('EXPO_PUBLIC_API_BASE_URL');
+  const configuredBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
 
   if (configuredBaseUrl) {
     return configuredBaseUrl.replace(/\/$/, '');
@@ -61,14 +61,4 @@ function getApiBaseUrl() {
   }
 
   return 'http://localhost:4000';
-}
-
-function getEnv(name: string) {
-  const globalWithProcess = globalThis as typeof globalThis & {
-    process?: {
-      env?: Record<string, string | undefined>;
-    };
-  };
-
-  return globalWithProcess.process?.env?.[name]?.trim();
 }
