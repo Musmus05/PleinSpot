@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-03-19T15:09:50.275Z",
+  "fetchedAt": "2026-03-19T15:31:36.493Z",
   "stations": [
     {
       "address": "16 BD DES MARTYRS NANTAIS",
@@ -330,7 +330,7 @@
       "postcode": "95350",
       "prices": {
         "gazole": {
-          "updatedAt": "2026-03-19T00:42:00",
+          "updatedAt": "2026-03-19T16:04:19",
           "value": 2.139
         },
         "sp95": {
@@ -338,19 +338,19 @@
           "value": 1.738
         },
         "e85": {
-          "updatedAt": "2026-03-19T00:42:00",
+          "updatedAt": "2026-03-19T16:04:19",
           "value": 0.68
         },
         "gplc": {
-          "updatedAt": "2026-03-19T00:42:00",
+          "updatedAt": "2026-03-19T16:04:19",
           "value": 0.874
         },
         "e10": {
-          "updatedAt": "2026-03-19T00:42:00",
+          "updatedAt": "2026-03-19T16:04:19",
           "value": 1.886
         },
         "sp98": {
-          "updatedAt": "2026-03-19T00:42:00",
+          "updatedAt": "2026-03-19T16:04:19",
           "value": 2.018
         }
       },
@@ -5137,7 +5137,6 @@
       "address": "Rue d'Armor",
       "automate24h": true,
       "availableFuelLabels": [
-        "gazole",
         "e85",
         "e10",
         "sp98"
@@ -5151,17 +5150,13 @@
       "id": 29510005,
       "postcode": "29170",
       "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-14T12:15:55",
-          "value": 1.999
-        },
         "e85": {
           "updatedAt": "2026-03-04T08:23:43",
           "value": 0.758
         },
         "e10": {
-          "updatedAt": "2026-03-17T12:45:20",
-          "value": 1.904
+          "updatedAt": "2026-03-19T16:14:14",
+          "value": 1.919
         },
         "sp98": {
           "updatedAt": "2026-03-17T12:45:20",
@@ -67746,6 +67741,47 @@
       "unavailableFuelLabels": []
     },
     {
+      "address": "29 Rue Claire Pertus",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "sp95",
+        "sp98"
+      ],
+      "city": "Pont L'abbe D'arnoult",
+      "coordinates": {
+        "latitude": 45.83,
+        "longitude": -0.877
+      },
+      "department": "Dept. 17",
+      "id": 17250002,
+      "postcode": "17250",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-17T07:35:02",
+          "value": 2.059
+        },
+        "sp95": {
+          "updatedAt": "2026-03-17T07:35:02",
+          "value": 1.935
+        },
+        "sp98": {
+          "updatedAt": "2026-03-17T07:35:02",
+          "value": 2.009
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
+      "services": [
+        "Laverie",
+        "Relais colis",
+        "Location de véhicule",
+        "Vente de gaz domestique (Butane, Propane)",
+        "Automate CB 24/24"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
       "address": "37 BIS RUE PRINCIPALE RD811",
       "automate24h": true,
       "availableFuelLabels": [
@@ -68057,47 +68093,6 @@
         "Vente de gaz domestique (Butane, Propane)",
         "Vente d'additifs carburants",
         "Wifi"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
-      "address": "29 Rue Claire Pertus",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "sp95",
-        "sp98"
-      ],
-      "city": "Pont L'abbe D'arnoult",
-      "coordinates": {
-        "latitude": 45.83,
-        "longitude": -0.877
-      },
-      "department": "Dept. 17",
-      "id": 17250002,
-      "postcode": "17250",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-17T07:35:02",
-          "value": 2.059
-        },
-        "sp95": {
-          "updatedAt": "2026-03-17T07:35:02",
-          "value": 1.935
-        },
-        "sp98": {
-          "updatedAt": "2026-03-17T07:35:02",
-          "value": 2.009
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
-      "services": [
-        "Laverie",
-        "Relais colis",
-        "Location de véhicule",
-        "Vente de gaz domestique (Butane, Propane)",
-        "Automate CB 24/24"
       ],
       "unavailableFuelLabels": []
     },
@@ -88435,55 +88430,6 @@
       "unavailableFuelLabels": []
     },
     {
-      "address": "54 AVENUE DE THIERS",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "e85",
-        "e10",
-        "sp98"
-      ],
-      "city": "Courpiere",
-      "coordinates": {
-        "latitude": 45.762,
-        "longitude": 3.54
-      },
-      "department": "Dept. 63",
-      "id": 63120002,
-      "postcode": "63120",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-18T07:59:09",
-          "value": 1.999
-        },
-        "e85": {
-          "updatedAt": "2026-03-13T15:58:58",
-          "value": 0.758
-        },
-        "e10": {
-          "updatedAt": "2026-03-18T07:59:09",
-          "value": 1.899
-        },
-        "sp98": {
-          "updatedAt": "2026-03-14T19:15:00",
-          "value": 1.999
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
-      "services": [
-        "Laverie",
-        "Boutique alimentaire",
-        "Boutique non alimentaire",
-        "Station de gonflage",
-        "Location de véhicule",
-        "Piste poids lourds",
-        "Vente de gaz domestique (Butane, Propane)",
-        "Automate CB 24/24"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
       "address": "25, avenue des XAINTRIES",
       "automate24h": true,
       "availableFuelLabels": [
@@ -88786,6 +88732,55 @@
         "Vente de gaz domestique (Butane, Propane)",
         "Automate CB 24/24",
         "DAB (Distributeur automatique de billets)"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
+      "address": "54 AVENUE DE THIERS",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "e85",
+        "e10",
+        "sp98"
+      ],
+      "city": "Courpiere",
+      "coordinates": {
+        "latitude": 45.762,
+        "longitude": 3.54
+      },
+      "department": "Dept. 63",
+      "id": 63120002,
+      "postcode": "63120",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-18T07:59:09",
+          "value": 1.999
+        },
+        "e85": {
+          "updatedAt": "2026-03-13T15:58:58",
+          "value": 0.758
+        },
+        "e10": {
+          "updatedAt": "2026-03-18T07:59:09",
+          "value": 1.899
+        },
+        "sp98": {
+          "updatedAt": "2026-03-14T19:15:00",
+          "value": 1.999
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
+      "services": [
+        "Laverie",
+        "Boutique alimentaire",
+        "Boutique non alimentaire",
+        "Station de gonflage",
+        "Location de véhicule",
+        "Piste poids lourds",
+        "Vente de gaz domestique (Butane, Propane)",
+        "Automate CB 24/24"
       ],
       "unavailableFuelLabels": []
     },
@@ -93832,8 +93827,8 @@
           "value": 1.939
         },
         "sp98": {
-          "updatedAt": "2026-03-19T10:33:55",
-          "value": 2.019
+          "updatedAt": "2026-03-19T16:00:28",
+          "value": 2.039
         }
       },
       "region": "France",
@@ -94836,34 +94831,6 @@
       "unavailableFuelLabels": []
     },
     {
-      "address": "16 Avenue de Marboz",
-      "automate24h": false,
-      "availableFuelLabels": [
-        "gazole"
-      ],
-      "city": "Bourg En Bresse",
-      "coordinates": {
-        "latitude": 46.21842,
-        "longitude": 5.22767
-      },
-      "department": "Dept. 01",
-      "id": 1000002,
-      "postcode": "01000",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-13T12:20:03",
-          "value": 2.1
-        }
-      },
-      "region": "France",
-      "schedule": "",
-      "services": [
-        "Vente de gaz domestique (Butane, Propane)",
-        "DAB (Distributeur automatique de billets)"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
       "address": "LE CHAMP DE DEVANT",
       "automate24h": true,
       "availableFuelLabels": [
@@ -94892,6 +94859,44 @@
       "schedule": "Lundi 08:00-12:00 et 13:30-17:30, Mardi 08:00-12:00 et 13:30-17:30, Mercredi 08:00-12:00 et 13:30-17:30, Jeudi 08:00-12:00 et 13:30-17:30, Vendredi 08:00-12:00 et 13:30-16:30, Samedi ferme, Dimanche ferme",
       "services": [
         "Automate CB 24/24"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
+      "address": "16 Avenue de Marboz",
+      "automate24h": false,
+      "availableFuelLabels": [
+        "gazole",
+        "sp95",
+        "sp98"
+      ],
+      "city": "Bourg En Bresse",
+      "coordinates": {
+        "latitude": 46.21842,
+        "longitude": 5.22767
+      },
+      "department": "Dept. 01",
+      "id": 1000002,
+      "postcode": "01000",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-19T16:11:04",
+          "value": 2.12
+        },
+        "sp95": {
+          "updatedAt": "2026-03-19T16:11:04",
+          "value": 1.971
+        },
+        "sp98": {
+          "updatedAt": "2026-03-19T16:11:04",
+          "value": 2.063
+        }
+      },
+      "region": "France",
+      "schedule": "",
+      "services": [
+        "Vente de gaz domestique (Butane, Propane)",
+        "DAB (Distributeur automatique de billets)"
       ],
       "unavailableFuelLabels": []
     },
@@ -111940,20 +111945,20 @@
       "postcode": "40130",
       "prices": {
         "gazole": {
-          "updatedAt": "2026-03-18T11:10:20",
-          "value": 2.013
+          "updatedAt": "2026-03-19T16:07:43",
+          "value": 2.079
         },
         "e85": {
           "updatedAt": "2026-03-04T15:20:30",
           "value": 0.739
         },
         "e10": {
-          "updatedAt": "2026-03-18T11:10:20",
-          "value": 1.859
+          "updatedAt": "2026-03-19T16:07:43",
+          "value": 1.939
         },
         "sp98": {
-          "updatedAt": "2026-03-18T11:10:20",
-          "value": 1.959
+          "updatedAt": "2026-03-19T16:07:43",
+          "value": 1.989
         }
       },
       "region": "France",
@@ -120479,59 +120484,6 @@
       "unavailableFuelLabels": []
     },
     {
-      "address": "1 RUE FRANCIS GARNIER",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "e85",
-        "gplc",
-        "e10",
-        "sp98"
-      ],
-      "city": "Reims",
-      "coordinates": {
-        "latitude": 49.287,
-        "longitude": 4.026
-      },
-      "department": "Dept. 51",
-      "id": 51068001,
-      "postcode": "51100",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-18T11:53:33",
-          "value": 2.072
-        },
-        "e85": {
-          "updatedAt": "2026-03-11T11:27:20",
-          "value": 0.697
-        },
-        "gplc": {
-          "updatedAt": "2026-03-04T11:44:42",
-          "value": 0.915
-        },
-        "e10": {
-          "updatedAt": "2026-03-18T11:53:33",
-          "value": 1.855
-        },
-        "sp98": {
-          "updatedAt": "2026-03-18T11:53:33",
-          "value": 1.968
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi 08:00-20:00, Mardi 08:00-20:00, Mercredi 08:00-20:00, Jeudi 08:00-20:00, Vendredi 08:00-20:00, Samedi 08:00-20:00, Dimanche ferme",
-      "services": [
-        "Station de gonflage",
-        "Carburant additivé",
-        "Piste poids lourds",
-        "Lavage automatique",
-        "Vente de gaz domestique (Butane, Propane)",
-        "Automate CB 24/24",
-        "DAB (Distributeur automatique de billets)"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
       "address": "143 rue du four a chaux",
       "automate24h": false,
       "availableFuelLabels": [
@@ -121055,6 +121007,59 @@
         "Relais colis",
         "Vente de gaz domestique (Butane, Propane)",
         "Bornes électriques"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
+      "address": "1 RUE FRANCIS GARNIER",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "e85",
+        "gplc",
+        "e10",
+        "sp98"
+      ],
+      "city": "Reims",
+      "coordinates": {
+        "latitude": 49.287,
+        "longitude": 4.026
+      },
+      "department": "Dept. 51",
+      "id": 51068001,
+      "postcode": "51100",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-18T11:53:33",
+          "value": 2.072
+        },
+        "e85": {
+          "updatedAt": "2026-03-11T11:27:20",
+          "value": 0.697
+        },
+        "gplc": {
+          "updatedAt": "2026-03-04T11:44:42",
+          "value": 0.915
+        },
+        "e10": {
+          "updatedAt": "2026-03-18T11:53:33",
+          "value": 1.855
+        },
+        "sp98": {
+          "updatedAt": "2026-03-18T11:53:33",
+          "value": 1.968
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi 08:00-20:00, Mardi 08:00-20:00, Mercredi 08:00-20:00, Jeudi 08:00-20:00, Vendredi 08:00-20:00, Samedi 08:00-20:00, Dimanche ferme",
+      "services": [
+        "Station de gonflage",
+        "Carburant additivé",
+        "Piste poids lourds",
+        "Lavage automatique",
+        "Vente de gaz domestique (Butane, Propane)",
+        "Automate CB 24/24",
+        "DAB (Distributeur automatique de billets)"
       ],
       "unavailableFuelLabels": []
     },
@@ -122272,57 +122277,6 @@
       "unavailableFuelLabels": []
     },
     {
-      "address": "27 Route de l'Isac",
-      "automate24h": false,
-      "availableFuelLabels": [
-        "gazole",
-        "sp95",
-        "e10",
-        "sp98"
-      ],
-      "city": "Blain",
-      "coordinates": {
-        "latitude": 47.473061839157,
-        "longitude": -1.7469807605743002
-      },
-      "department": "Dept. 44",
-      "id": 44130001,
-      "postcode": "44130",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-14T09:20:49",
-          "value": 1.959
-        },
-        "sp95": {
-          "updatedAt": "2026-03-14T09:20:49",
-          "value": 1.865
-        },
-        "e10": {
-          "updatedAt": "2026-03-14T09:20:49",
-          "value": 1.782
-        },
-        "sp98": {
-          "updatedAt": "2026-03-17T13:40:15",
-          "value": 1.884
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
-      "services": [
-        "Boutique non alimentaire",
-        "Restauration sur place",
-        "Bar",
-        "Station de gonflage",
-        "Location de véhicule",
-        "Piste poids lourds",
-        "Lavage automatique",
-        "Lavage manuel",
-        "Services réparation / entretien",
-        "Vente de gaz domestique (Butane, Propane)"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
       "address": "QUARTIER SUD FOURCHON",
       "automate24h": true,
       "availableFuelLabels": [
@@ -122358,6 +122312,57 @@
         "Station de gonflage",
         "Carburant additivé",
         "Automate CB 24/24"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
+      "address": "27 Route de l'Isac",
+      "automate24h": false,
+      "availableFuelLabels": [
+        "gazole",
+        "sp95",
+        "e10",
+        "sp98"
+      ],
+      "city": "Blain",
+      "coordinates": {
+        "latitude": 47.473061839157,
+        "longitude": -1.7469807605743002
+      },
+      "department": "Dept. 44",
+      "id": 44130001,
+      "postcode": "44130",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-19T16:08:14",
+          "value": 1.982
+        },
+        "sp95": {
+          "updatedAt": "2026-03-19T16:08:14",
+          "value": 1.869
+        },
+        "e10": {
+          "updatedAt": "2026-03-19T16:08:14",
+          "value": 1.879
+        },
+        "sp98": {
+          "updatedAt": "2026-03-19T16:08:14",
+          "value": 1.898
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
+      "services": [
+        "Boutique non alimentaire",
+        "Restauration sur place",
+        "Bar",
+        "Station de gonflage",
+        "Location de véhicule",
+        "Piste poids lourds",
+        "Lavage automatique",
+        "Lavage manuel",
+        "Services réparation / entretien",
+        "Vente de gaz domestique (Butane, Propane)"
       ],
       "unavailableFuelLabels": []
     },
@@ -128369,6 +128374,47 @@
       "unavailableFuelLabels": []
     },
     {
+      "address": "17 avenue de la presqu'ile",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "sp95",
+        "sp98"
+      ],
+      "city": "Arvert",
+      "coordinates": {
+        "latitude": 45.742,
+        "longitude": -1.121
+      },
+      "department": "Dept. 17",
+      "id": 17530003,
+      "postcode": "17530",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-13T09:51:42",
+          "value": 1.989
+        },
+        "sp95": {
+          "updatedAt": "2026-03-13T09:51:42",
+          "value": 1.916
+        },
+        "sp98": {
+          "updatedAt": "2026-03-13T09:51:42",
+          "value": 1.919
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi ferme, Mardi ferme, Mercredi ferme, Jeudi ferme, Vendredi ferme, Samedi ferme, Dimanche ferme",
+      "services": [
+        "Boutique alimentaire",
+        "Vente de gaz domestique (Butane, Propane)",
+        "Vente d'additifs carburants",
+        "Automate CB 24/24",
+        "DAB (Distributeur automatique de billets)"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
       "address": "29, rue de Maresquel",
       "automate24h": false,
       "availableFuelLabels": [
@@ -128415,47 +128461,6 @@
         "Piste poids lourds",
         "Lavage automatique",
         "Vente de gaz domestique (Butane, Propane)",
-        "DAB (Distributeur automatique de billets)"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
-      "address": "17 avenue de la presqu'ile",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "sp95",
-        "sp98"
-      ],
-      "city": "Arvert",
-      "coordinates": {
-        "latitude": 45.742,
-        "longitude": -1.121
-      },
-      "department": "Dept. 17",
-      "id": 17530003,
-      "postcode": "17530",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-13T09:51:42",
-          "value": 1.989
-        },
-        "sp95": {
-          "updatedAt": "2026-03-13T09:51:42",
-          "value": 1.916
-        },
-        "sp98": {
-          "updatedAt": "2026-03-13T09:51:42",
-          "value": 1.919
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi ferme, Mardi ferme, Mercredi ferme, Jeudi ferme, Vendredi ferme, Samedi ferme, Dimanche ferme",
-      "services": [
-        "Boutique alimentaire",
-        "Vente de gaz domestique (Butane, Propane)",
-        "Vente d'additifs carburants",
-        "Automate CB 24/24",
         "DAB (Distributeur automatique de billets)"
       ],
       "unavailableFuelLabels": []
@@ -129893,6 +129898,70 @@
       "unavailableFuelLabels": []
     },
     {
+      "address": "AVENUE EUGENE POTTIER",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "e85",
+        "gplc",
+        "e10",
+        "sp98"
+      ],
+      "city": "Tomblaine",
+      "coordinates": {
+        "latitude": 48.686,
+        "longitude": 6.218
+      },
+      "department": "Dept. 54",
+      "id": 54510001,
+      "postcode": "54510",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-19T16:01:58",
+          "value": 2.129
+        },
+        "e85": {
+          "updatedAt": "2026-03-11T09:11:38",
+          "value": 0.744
+        },
+        "gplc": {
+          "updatedAt": "2026-03-18T10:46:05",
+          "value": 0.915
+        },
+        "e10": {
+          "updatedAt": "2026-03-19T08:59:30",
+          "value": 1.916
+        },
+        "sp98": {
+          "updatedAt": "2026-03-19T08:59:30",
+          "value": 2.007
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi 10:30-12:30, Mardi ferme, Mercredi ferme, Jeudi ferme, Vendredi 10:30-12:30, Samedi 09:00-12:30, Dimanche ferme",
+      "services": [
+        "Toilettes publiques",
+        "Relais colis",
+        "Boutique alimentaire",
+        "Boutique non alimentaire",
+        "Restauration à emporter",
+        "Restauration sur place",
+        "Bar",
+        "Vente de pétrole lampant",
+        "Station de gonflage",
+        "Carburant additivé",
+        "Piste poids lourds",
+        "Espace bébé",
+        "Vente de gaz domestique (Butane, Propane)",
+        "Bornes électriques",
+        "Vente d'additifs carburants",
+        "Wifi",
+        "Automate CB 24/24",
+        "DAB (Distributeur automatique de billets)"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
       "address": "362 AVENUE RHIN ET DANUBE",
       "automate24h": true,
       "availableFuelLabels": [
@@ -130136,70 +130205,6 @@
         "Vente de gaz domestique (Butane, Propane)",
         "Vente d'additifs carburants",
         "Automate CB 24/24"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
-      "address": "AVENUE EUGENE POTTIER",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "e85",
-        "gplc",
-        "e10",
-        "sp98"
-      ],
-      "city": "Tomblaine",
-      "coordinates": {
-        "latitude": 48.686,
-        "longitude": 6.218
-      },
-      "department": "Dept. 54",
-      "id": 54510001,
-      "postcode": "54510",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-19T08:59:30",
-          "value": 2.1
-        },
-        "e85": {
-          "updatedAt": "2026-03-11T09:11:38",
-          "value": 0.744
-        },
-        "gplc": {
-          "updatedAt": "2026-03-18T10:46:05",
-          "value": 0.915
-        },
-        "e10": {
-          "updatedAt": "2026-03-19T08:59:30",
-          "value": 1.916
-        },
-        "sp98": {
-          "updatedAt": "2026-03-19T08:59:30",
-          "value": 2.007
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi 10:30-12:30, Mardi ferme, Mercredi ferme, Jeudi ferme, Vendredi 10:30-12:30, Samedi 09:00-12:30, Dimanche ferme",
-      "services": [
-        "Toilettes publiques",
-        "Relais colis",
-        "Boutique alimentaire",
-        "Boutique non alimentaire",
-        "Restauration à emporter",
-        "Restauration sur place",
-        "Bar",
-        "Vente de pétrole lampant",
-        "Station de gonflage",
-        "Carburant additivé",
-        "Piste poids lourds",
-        "Espace bébé",
-        "Vente de gaz domestique (Butane, Propane)",
-        "Bornes électriques",
-        "Vente d'additifs carburants",
-        "Wifi",
-        "Automate CB 24/24",
-        "DAB (Distributeur automatique de billets)"
       ],
       "unavailableFuelLabels": []
     },
@@ -144197,6 +144202,48 @@
       "unavailableFuelLabels": []
     },
     {
+      "address": "AVENUE DES PLATANES",
+      "automate24h": false,
+      "availableFuelLabels": [
+        "gazole",
+        "e10",
+        "sp98"
+      ],
+      "city": "Mordelles",
+      "coordinates": {
+        "latitude": 48.08,
+        "longitude": -1.835
+      },
+      "department": "Dept. 35",
+      "id": 35310002,
+      "postcode": "35310",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-19T16:19:53",
+          "value": 2.048
+        },
+        "e10": {
+          "updatedAt": "2026-03-19T16:19:53",
+          "value": 1.905
+        },
+        "sp98": {
+          "updatedAt": "2026-03-19T16:19:53",
+          "value": 2.011
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
+      "services": [
+        "Station de gonflage",
+        "Location de véhicule",
+        "Piste poids lourds",
+        "Lavage automatique",
+        "Lavage manuel",
+        "Vente de gaz domestique (Butane, Propane)"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
       "address": "Rue Raymond Boisdé",
       "automate24h": true,
       "availableFuelLabels": [
@@ -144583,48 +144630,6 @@
         "Station de gonflage",
         "Carburant additivé",
         "DAB (Distributeur automatique de billets)"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
-      "address": "AVENUE DES PLATANES",
-      "automate24h": false,
-      "availableFuelLabels": [
-        "gazole",
-        "e10",
-        "sp98"
-      ],
-      "city": "Mordelles",
-      "coordinates": {
-        "latitude": 48.08,
-        "longitude": -1.835
-      },
-      "department": "Dept. 35",
-      "id": 35310002,
-      "postcode": "35310",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-17T14:51:04",
-          "value": 1.989
-        },
-        "e10": {
-          "updatedAt": "2026-03-17T14:51:04",
-          "value": 1.839
-        },
-        "sp98": {
-          "updatedAt": "2026-03-17T14:51:04",
-          "value": 1.949
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
-      "services": [
-        "Station de gonflage",
-        "Location de véhicule",
-        "Piste poids lourds",
-        "Lavage automatique",
-        "Lavage manuel",
-        "Vente de gaz domestique (Butane, Propane)"
       ],
       "unavailableFuelLabels": []
     },
@@ -184632,68 +184637,6 @@
       "unavailableFuelLabels": []
     },
     {
-      "address": "AVENUE DE LA MAINE",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "e85",
-        "gplc",
-        "e10",
-        "sp98"
-      ],
-      "city": "Les Herbiers",
-      "coordinates": {
-        "latitude": 46.875,
-        "longitude": -1.025
-      },
-      "department": "Dept. 85",
-      "id": 85500002,
-      "postcode": "85500",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-18T08:50:00",
-          "value": 1.972
-        },
-        "e85": {
-          "updatedAt": "2026-02-22T00:29:54",
-          "value": 0.699
-        },
-        "gplc": {
-          "updatedAt": "2026-03-12T09:58:57",
-          "value": 0.935
-        },
-        "e10": {
-          "updatedAt": "2026-03-19T08:50:00",
-          "value": 1.815
-        },
-        "sp98": {
-          "updatedAt": "2026-03-19T08:50:00",
-          "value": 1.918
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi 09:00-19:00, Mardi 09:00-19:00, Mercredi 09:00-19:00, Jeudi 09:00-19:00, Vendredi 09:00-20:00, Samedi 09:00-19:00, Dimanche ferme",
-      "services": [
-        "Toilettes publiques",
-        "Laverie",
-        "Relais colis",
-        "Restauration à emporter",
-        "Vente de fioul domestique",
-        "Vente de pétrole lampant",
-        "Station de gonflage",
-        "Carburant additivé",
-        "Location de véhicule",
-        "Piste poids lourds",
-        "Lavage automatique",
-        "Lavage manuel",
-        "Vente de gaz domestique (Butane, Propane)",
-        "Bornes électriques",
-        "Vente d'additifs carburants",
-        "Automate CB 24/24"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
       "address": "Rue de Rennes",
       "automate24h": false,
       "availableFuelLabels": [
@@ -185200,6 +185143,68 @@
         "Lavage manuel",
         "Vente de gaz domestique (Butane, Propane)",
         "DAB (Distributeur automatique de billets)"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
+      "address": "AVENUE DE LA MAINE",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "e85",
+        "gplc",
+        "e10",
+        "sp98"
+      ],
+      "city": "Les Herbiers",
+      "coordinates": {
+        "latitude": 46.875,
+        "longitude": -1.025
+      },
+      "department": "Dept. 85",
+      "id": 85500002,
+      "postcode": "85500",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-18T08:50:00",
+          "value": 1.972
+        },
+        "e85": {
+          "updatedAt": "2026-02-22T00:29:54",
+          "value": 0.699
+        },
+        "gplc": {
+          "updatedAt": "2026-03-12T09:58:57",
+          "value": 0.935
+        },
+        "e10": {
+          "updatedAt": "2026-03-19T08:50:00",
+          "value": 1.815
+        },
+        "sp98": {
+          "updatedAt": "2026-03-19T08:50:00",
+          "value": 1.918
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi 09:00-19:00, Mardi 09:00-19:00, Mercredi 09:00-19:00, Jeudi 09:00-19:00, Vendredi 09:00-20:00, Samedi 09:00-19:00, Dimanche ferme",
+      "services": [
+        "Toilettes publiques",
+        "Laverie",
+        "Relais colis",
+        "Restauration à emporter",
+        "Vente de fioul domestique",
+        "Vente de pétrole lampant",
+        "Station de gonflage",
+        "Carburant additivé",
+        "Location de véhicule",
+        "Piste poids lourds",
+        "Lavage automatique",
+        "Lavage manuel",
+        "Vente de gaz domestique (Butane, Propane)",
+        "Bornes électriques",
+        "Vente d'additifs carburants",
+        "Automate CB 24/24"
       ],
       "unavailableFuelLabels": []
     },
@@ -188898,40 +188903,6 @@
       "unavailableFuelLabels": []
     },
     {
-      "address": "RUE JEANNE PICHENAUD",
-      "automate24h": false,
-      "availableFuelLabels": [
-        "gazole",
-        "sp95"
-      ],
-      "city": "Aixe Sur Vienne",
-      "coordinates": {
-        "latitude": 45.7909,
-        "longitude": 1.13539
-      },
-      "department": "Dept. 87",
-      "id": 87700004,
-      "postcode": "87700",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-17T09:57:41",
-          "value": 1.999
-        },
-        "sp95": {
-          "updatedAt": "2026-03-19T09:53:13",
-          "value": 1.979
-        }
-      },
-      "region": "France",
-      "schedule": "",
-      "services": [
-        "Station de gonflage",
-        "Lavage automatique",
-        "Vente de gaz domestique (Butane, Propane)"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
       "address": "54 AVENUE LOUIS ARAGON",
       "automate24h": true,
       "availableFuelLabels": [
@@ -189163,6 +189134,40 @@
         "Bornes électriques",
         "Automate CB 24/24",
         "DAB (Distributeur automatique de billets)"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
+      "address": "RUE JEANNE PICHENAUD",
+      "automate24h": false,
+      "availableFuelLabels": [
+        "gazole",
+        "sp95"
+      ],
+      "city": "Aixe Sur Vienne",
+      "coordinates": {
+        "latitude": 45.7909,
+        "longitude": 1.13539
+      },
+      "department": "Dept. 87",
+      "id": 87700004,
+      "postcode": "87700",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-19T16:17:38",
+          "value": 2.049
+        },
+        "sp95": {
+          "updatedAt": "2026-03-19T09:53:13",
+          "value": 1.979
+        }
+      },
+      "region": "France",
+      "schedule": "",
+      "services": [
+        "Station de gonflage",
+        "Lavage automatique",
+        "Vente de gaz domestique (Butane, Propane)"
       ],
       "unavailableFuelLabels": []
     },
@@ -203328,20 +203333,20 @@
       "postcode": "49440",
       "prices": {
         "gazole": {
-          "updatedAt": "2026-03-19T09:07:03",
-          "value": 1.999
+          "updatedAt": "2026-03-19T16:06:46",
+          "value": 2.019
         },
         "e85": {
           "updatedAt": "2026-02-04T08:00:00",
           "value": 0.749
         },
         "e10": {
-          "updatedAt": "2026-03-16T11:50:45",
-          "value": 1.819
+          "updatedAt": "2026-03-19T16:06:46",
+          "value": 1.859
         },
         "sp98": {
-          "updatedAt": "2026-03-11T20:12:58",
-          "value": 1.909
+          "updatedAt": "2026-03-19T16:06:46",
+          "value": 1.959
         }
       },
       "region": "France",
@@ -207837,20 +207842,20 @@
       "postcode": "26200",
       "prices": {
         "gazole": {
-          "updatedAt": "2026-03-18T06:25:51",
-          "value": 1.999
+          "updatedAt": "2026-03-19T16:06:05",
+          "value": 2.059
         },
         "e85": {
           "updatedAt": "2026-03-12T10:17:22",
           "value": 0.758
         },
         "e10": {
-          "updatedAt": "2026-03-18T06:25:51",
-          "value": 1.879
+          "updatedAt": "2026-03-19T16:06:05",
+          "value": 1.939
         },
         "sp98": {
-          "updatedAt": "2026-03-18T06:25:52",
-          "value": 1.978
+          "updatedAt": "2026-03-19T16:06:05",
+          "value": 1.989
         }
       },
       "region": "France",
@@ -232467,6 +232472,62 @@
       "unavailableFuelLabels": []
     },
     {
+      "address": "2111 route du Plantaurel",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "e85",
+        "e10",
+        "sp98"
+      ],
+      "city": "Labarthe Sur Lèze",
+      "coordinates": {
+        "latitude": 43.45,
+        "longitude": 1.39
+      },
+      "department": "Dept. 31",
+      "id": 31860005,
+      "postcode": "31860",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-17T23:59:00",
+          "value": 2.096
+        },
+        "e85": {
+          "updatedAt": "2026-03-12T19:02:29",
+          "value": 0.758
+        },
+        "e10": {
+          "updatedAt": "2026-03-17T23:59:00",
+          "value": 1.916
+        },
+        "sp98": {
+          "updatedAt": "2026-03-17T23:59:00",
+          "value": 2.049
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
+      "services": [
+        "Toilettes publiques",
+        "Laverie",
+        "Relais colis",
+        "Boutique alimentaire",
+        "Station de gonflage",
+        "Aire de camping-cars",
+        "Location de véhicule",
+        "Piste poids lourds",
+        "Lavage automatique",
+        "Lavage manuel",
+        "Vente de gaz domestique (Butane, Propane)",
+        "Bornes électriques",
+        "Vente d'additifs carburants",
+        "Automate CB 24/24",
+        "DAB (Distributeur automatique de billets)"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
       "address": "PLACE DE GENERAL DE GAULLE",
       "automate24h": true,
       "availableFuelLabels": [
@@ -232628,62 +232689,6 @@
       "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
       "services": [
         "Automate CB 24/24"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
-      "address": "2111 route du Plantaurel",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "e85",
-        "e10",
-        "sp98"
-      ],
-      "city": "Labarthe Sur Lèze",
-      "coordinates": {
-        "latitude": 43.45,
-        "longitude": 1.39
-      },
-      "department": "Dept. 31",
-      "id": 31860005,
-      "postcode": "31860",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-17T23:59:00",
-          "value": 2.096
-        },
-        "e85": {
-          "updatedAt": "2026-03-12T19:02:29",
-          "value": 0.758
-        },
-        "e10": {
-          "updatedAt": "2026-03-17T23:59:00",
-          "value": 1.916
-        },
-        "sp98": {
-          "updatedAt": "2026-03-17T23:59:00",
-          "value": 2.049
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
-      "services": [
-        "Toilettes publiques",
-        "Laverie",
-        "Relais colis",
-        "Boutique alimentaire",
-        "Station de gonflage",
-        "Aire de camping-cars",
-        "Location de véhicule",
-        "Piste poids lourds",
-        "Lavage automatique",
-        "Lavage manuel",
-        "Vente de gaz domestique (Butane, Propane)",
-        "Bornes électriques",
-        "Vente d'additifs carburants",
-        "Automate CB 24/24",
-        "DAB (Distributeur automatique de billets)"
       ],
       "unavailableFuelLabels": []
     },
@@ -251941,7 +251946,7 @@
           "value": 2.249
         },
         "gplc": {
-          "updatedAt": "2026-03-16T16:43:26",
+          "updatedAt": "2026-03-19T16:03:58",
           "value": 1.095
         },
         "e10": {
@@ -303986,60 +303991,6 @@
       "unavailableFuelLabels": []
     },
     {
-      "address": "ZI DE LA SURE",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "e85",
-        "e10",
-        "sp98"
-      ],
-      "city": "St André De Corcy",
-      "coordinates": {
-        "latitude": 45.932,
-        "longitude": 4.958
-      },
-      "department": "Dept. 01",
-      "id": 1390010,
-      "postcode": "01390",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-18T07:48:20",
-          "value": 2.079
-        },
-        "e85": {
-          "updatedAt": "2026-03-05T08:50:01",
-          "value": 0.759
-        },
-        "e10": {
-          "updatedAt": "2026-03-18T07:48:20",
-          "value": 1.929
-        },
-        "sp98": {
-          "updatedAt": "2026-03-19T08:46:41",
-          "value": 2.049
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi 00:00-23:59, Mardi 00:00-23:59, Mercredi 00:00-23:59, Jeudi 00:00-23:59, Vendredi 00:00-23:59, Samedi 00:00-23:59, Dimanche 00:00-23:59",
-      "services": [
-        "Toilettes publiques",
-        "Laverie",
-        "Relais colis",
-        "Boutique alimentaire",
-        "Boutique non alimentaire",
-        "Restauration à emporter",
-        "Restauration sur place",
-        "Station de gonflage",
-        "Vente de gaz domestique (Butane, Propane)",
-        "Bornes électriques",
-        "Vente d'additifs carburants",
-        "Automate CB 24/24",
-        "DAB (Distributeur automatique de billets)"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
       "address": "za LAMARRAQUE",
       "automate24h": false,
       "availableFuelLabels": [
@@ -304353,6 +304304,60 @@
         "Boutique non alimentaire",
         "Vente de pétrole lampant",
         "Vente de gaz domestique (Butane, Propane)",
+        "DAB (Distributeur automatique de billets)"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
+      "address": "ZI DE LA SURE",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "e85",
+        "e10",
+        "sp98"
+      ],
+      "city": "St André De Corcy",
+      "coordinates": {
+        "latitude": 45.932,
+        "longitude": 4.958
+      },
+      "department": "Dept. 01",
+      "id": 1390010,
+      "postcode": "01390",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-19T16:15:49",
+          "value": 2.099
+        },
+        "e85": {
+          "updatedAt": "2026-03-05T08:50:01",
+          "value": 0.759
+        },
+        "e10": {
+          "updatedAt": "2026-03-19T16:15:49",
+          "value": 1.979
+        },
+        "sp98": {
+          "updatedAt": "2026-03-19T16:15:49",
+          "value": 2.079
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi 00:00-23:59, Mardi 00:00-23:59, Mercredi 00:00-23:59, Jeudi 00:00-23:59, Vendredi 00:00-23:59, Samedi 00:00-23:59, Dimanche 00:00-23:59",
+      "services": [
+        "Toilettes publiques",
+        "Laverie",
+        "Relais colis",
+        "Boutique alimentaire",
+        "Boutique non alimentaire",
+        "Restauration à emporter",
+        "Restauration sur place",
+        "Station de gonflage",
+        "Vente de gaz domestique (Butane, Propane)",
+        "Bornes électriques",
+        "Vente d'additifs carburants",
+        "Automate CB 24/24",
         "DAB (Distributeur automatique de billets)"
       ],
       "unavailableFuelLabels": []
@@ -313420,6 +313425,48 @@
       "unavailableFuelLabels": []
     },
     {
+      "address": "Départemental RD 6014",
+      "automate24h": false,
+      "availableFuelLabels": [
+        "gazole",
+        "sp95",
+        "e10"
+      ],
+      "city": "Boos",
+      "coordinates": {
+        "latitude": 49.388880019033,
+        "longitude": 1.2004598332776
+      },
+      "department": "Dept. 76",
+      "id": 76520002,
+      "postcode": "76520",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-18T14:55:26",
+          "value": 2.016
+        },
+        "sp95": {
+          "updatedAt": "2026-03-17T08:45:00",
+          "value": 1.953
+        },
+        "e10": {
+          "updatedAt": "2026-03-18T14:55:26",
+          "value": 1.842
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
+      "services": [
+        "Toilettes publiques",
+        "Vente de fioul domestique",
+        "Vente de pétrole lampant",
+        "Lavage automatique",
+        "Vente de gaz domestique (Butane, Propane)",
+        "DAB (Distributeur automatique de billets)"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
       "address": "123 ROUTE DE MONTRENAZ",
       "automate24h": true,
       "availableFuelLabels": [
@@ -313537,48 +313584,6 @@
       "region": "France",
       "schedule": "",
       "services": [
-        "Vente de gaz domestique (Butane, Propane)",
-        "DAB (Distributeur automatique de billets)"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
-      "address": "Départemental RD 6014",
-      "automate24h": false,
-      "availableFuelLabels": [
-        "gazole",
-        "sp95",
-        "e10"
-      ],
-      "city": "Boos",
-      "coordinates": {
-        "latitude": 49.388880019033,
-        "longitude": 1.2004598332776
-      },
-      "department": "Dept. 76",
-      "id": 76520002,
-      "postcode": "76520",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-18T14:55:26",
-          "value": 2.016
-        },
-        "sp95": {
-          "updatedAt": "2026-03-17T08:45:00",
-          "value": 1.953
-        },
-        "e10": {
-          "updatedAt": "2026-03-18T14:55:26",
-          "value": 1.842
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
-      "services": [
-        "Toilettes publiques",
-        "Vente de fioul domestique",
-        "Vente de pétrole lampant",
-        "Lavage automatique",
         "Vente de gaz domestique (Butane, Propane)",
         "DAB (Distributeur automatique de billets)"
       ],
@@ -320400,7 +320405,7 @@
       "postcode": "77760",
       "prices": {
         "gazole": {
-          "updatedAt": "2026-03-19T15:12:14",
+          "updatedAt": "2026-03-19T16:03:14",
           "value": 2.08
         },
         "e85": {
@@ -329991,16 +329996,16 @@
       "postcode": "16100",
       "prices": {
         "gazole": {
-          "updatedAt": "2026-03-16T14:07:50",
-          "value": 2.035
+          "updatedAt": "2026-03-19T16:17:41",
+          "value": 2.05
         },
         "e10": {
-          "updatedAt": "2026-03-16T14:07:50",
-          "value": 1.856
+          "updatedAt": "2026-03-19T16:17:41",
+          "value": 1.884
         },
         "sp98": {
-          "updatedAt": "2026-03-16T14:07:51",
-          "value": 1.954
+          "updatedAt": "2026-03-19T16:17:42",
+          "value": 1.979
         }
       },
       "region": "France",
@@ -331150,6 +331155,40 @@
       "unavailableFuelLabels": []
     },
     {
+      "address": "403 AVENUE DES GLIERES",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "e10"
+      ],
+      "city": "Bonneville",
+      "coordinates": {
+        "latitude": 46.07158332529,
+        "longitude": 6.403211919326799
+      },
+      "department": "Dept. 74",
+      "id": 74130017,
+      "postcode": "74130",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-13T00:01:00",
+          "value": 2.15
+        },
+        "e10": {
+          "updatedAt": "2026-03-13T00:01:00",
+          "value": 2.02
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi ferme, Mardi ferme, Mercredi ferme, Jeudi ferme, Vendredi ferme, Samedi ferme, Dimanche ferme",
+      "services": [
+        "Carburant additivé",
+        "Piste poids lourds",
+        "Automate CB 24/24"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
       "address": "362 Rue du Général Leclerc",
       "automate24h": true,
       "availableFuelLabels": [
@@ -331521,40 +331560,6 @@
         "Lavage automatique",
         "Vente de gaz domestique (Butane, Propane)",
         "DAB (Distributeur automatique de billets)"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
-      "address": "403 AVENUE DES GLIERES",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "e10"
-      ],
-      "city": "Bonneville",
-      "coordinates": {
-        "latitude": 46.07158332529,
-        "longitude": 6.403211919326799
-      },
-      "department": "Dept. 74",
-      "id": 74130017,
-      "postcode": "74130",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-13T00:01:00",
-          "value": 2.15
-        },
-        "e10": {
-          "updatedAt": "2026-03-13T00:01:00",
-          "value": 2.02
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi ferme, Mardi ferme, Mercredi ferme, Jeudi ferme, Vendredi ferme, Samedi ferme, Dimanche ferme",
-      "services": [
-        "Carburant additivé",
-        "Piste poids lourds",
-        "Automate CB 24/24"
       ],
       "unavailableFuelLabels": []
     },
@@ -333701,6 +333706,55 @@
       "unavailableFuelLabels": []
     },
     {
+      "address": "16 Boulevard Saint-Michel",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "e85",
+        "e10"
+      ],
+      "city": "Avignon",
+      "coordinates": {
+        "latitude": 43.943,
+        "longitude": 4.811
+      },
+      "department": "Dept. 84",
+      "id": 84000007,
+      "postcode": "84000",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-17T07:18:57",
+          "value": 2.125
+        },
+        "e85": {
+          "updatedAt": "2026-03-17T07:18:57",
+          "value": 0.849
+        },
+        "e10": {
+          "updatedAt": "2026-03-17T07:18:57",
+          "value": 1.999
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi 07:00-20:00, Mardi 07:00-20:00, Mercredi 07:00-20:00, Jeudi 07:00-20:00, Vendredi 07:00-20:00, Samedi 07:00-20:00, Dimanche 07:00-20:00",
+      "services": [
+        "Toilettes publiques",
+        "Relais colis",
+        "Boutique alimentaire",
+        "Boutique non alimentaire",
+        "Restauration à emporter",
+        "Station de gonflage",
+        "Carburant additivé",
+        "Location de véhicule",
+        "Lavage automatique",
+        "Vente de gaz domestique (Butane, Propane)",
+        "Bornes électriques",
+        "Vente d'additifs carburants",
+        "Automate CB 24/24"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
       "address": "Rue de la Planche Maurice",
       "automate24h": false,
       "availableFuelLabels": [
@@ -333854,55 +333908,6 @@
         "Lavage manuel",
         "Vente de gaz domestique (Butane, Propane)",
         "Bornes électriques",
-        "Automate CB 24/24"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
-      "address": "16 Boulevard Saint-Michel",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "e85",
-        "e10"
-      ],
-      "city": "Avignon",
-      "coordinates": {
-        "latitude": 43.943,
-        "longitude": 4.811
-      },
-      "department": "Dept. 84",
-      "id": 84000007,
-      "postcode": "84000",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-17T07:18:57",
-          "value": 2.125
-        },
-        "e85": {
-          "updatedAt": "2026-03-17T07:18:57",
-          "value": 0.849
-        },
-        "e10": {
-          "updatedAt": "2026-03-17T07:18:57",
-          "value": 1.999
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi 07:00-20:00, Mardi 07:00-20:00, Mercredi 07:00-20:00, Jeudi 07:00-20:00, Vendredi 07:00-20:00, Samedi 07:00-20:00, Dimanche 07:00-20:00",
-      "services": [
-        "Toilettes publiques",
-        "Relais colis",
-        "Boutique alimentaire",
-        "Boutique non alimentaire",
-        "Restauration à emporter",
-        "Station de gonflage",
-        "Carburant additivé",
-        "Location de véhicule",
-        "Lavage automatique",
-        "Vente de gaz domestique (Butane, Propane)",
-        "Bornes électriques",
-        "Vente d'additifs carburants",
         "Automate CB 24/24"
       ],
       "unavailableFuelLabels": []
@@ -342937,6 +342942,59 @@
       "unavailableFuelLabels": []
     },
     {
+      "address": "Aire de Saint Nazaire les Eymes",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "gplc",
+        "e10",
+        "sp98"
+      ],
+      "city": "Saint Nazaire Les Eymes",
+      "coordinates": {
+        "latitude": 45.243577289359,
+        "longitude": 5.8607648908294
+      },
+      "department": "Dept. 38",
+      "id": 38330006,
+      "postcode": "38330",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-16T11:08:21",
+          "value": 2.249
+        },
+        "gplc": {
+          "updatedAt": "2026-03-16T11:08:21",
+          "value": 1.095
+        },
+        "e10": {
+          "updatedAt": "2026-03-16T11:08:21",
+          "value": 2.134
+        },
+        "sp98": {
+          "updatedAt": "2026-03-16T11:08:21",
+          "value": 2.234
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi 00:00-23:59, Mardi 00:00-23:59, Mercredi 00:00-23:59, Jeudi 00:00-23:59, Vendredi 00:00-23:59, Samedi 00:00-23:59, Dimanche 00:00-23:59",
+      "services": [
+        "Toilettes publiques",
+        "Douches",
+        "Relais colis",
+        "Boutique alimentaire",
+        "Boutique non alimentaire",
+        "Restauration à emporter",
+        "Restauration sur place",
+        "Station de gonflage",
+        "Piste poids lourds",
+        "Espace bébé",
+        "Vente d'additifs carburants",
+        "Automate CB 24/24"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
       "address": "Centre commercial de la Fontaine",
       "automate24h": false,
       "availableFuelLabels": [
@@ -343021,59 +343079,6 @@
         "Wifi",
         "Automate CB 24/24",
         "DAB (Distributeur automatique de billets)"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
-      "address": "Aire de Saint Nazaire les Eymes",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "gplc",
-        "e10",
-        "sp98"
-      ],
-      "city": "Saint Nazaire Les Eymes",
-      "coordinates": {
-        "latitude": 45.243577289359,
-        "longitude": 5.8607648908294
-      },
-      "department": "Dept. 38",
-      "id": 38330006,
-      "postcode": "38330",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-16T11:08:21",
-          "value": 2.249
-        },
-        "gplc": {
-          "updatedAt": "2026-03-16T11:08:21",
-          "value": 1.095
-        },
-        "e10": {
-          "updatedAt": "2026-03-16T11:08:21",
-          "value": 2.134
-        },
-        "sp98": {
-          "updatedAt": "2026-03-16T11:08:21",
-          "value": 2.234
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi 00:00-23:59, Mardi 00:00-23:59, Mercredi 00:00-23:59, Jeudi 00:00-23:59, Vendredi 00:00-23:59, Samedi 00:00-23:59, Dimanche 00:00-23:59",
-      "services": [
-        "Toilettes publiques",
-        "Douches",
-        "Relais colis",
-        "Boutique alimentaire",
-        "Boutique non alimentaire",
-        "Restauration à emporter",
-        "Restauration sur place",
-        "Station de gonflage",
-        "Piste poids lourds",
-        "Espace bébé",
-        "Vente d'additifs carburants",
-        "Automate CB 24/24"
       ],
       "unavailableFuelLabels": []
     },
@@ -348817,6 +348822,55 @@
       "unavailableFuelLabels": []
     },
     {
+      "address": "zac du grand rieux",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "e85",
+        "e10",
+        "sp98"
+      ],
+      "city": "Aixe Sur Vienne",
+      "coordinates": {
+        "latitude": 45.798,
+        "longitude": 1.124
+      },
+      "department": "Dept. 87",
+      "id": 87700005,
+      "postcode": "87700",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-19T16:05:43",
+          "value": 2.049
+        },
+        "e85": {
+          "updatedAt": "2026-03-13T09:34:39",
+          "value": 0.719
+        },
+        "e10": {
+          "updatedAt": "2026-03-19T16:05:43",
+          "value": 1.889
+        },
+        "sp98": {
+          "updatedAt": "2026-03-19T16:05:43",
+          "value": 1.989
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi 09:00-12:30, Mardi 09:00-12:30, Mercredi 09:00-12:30 et 15:30-19:00, Jeudi 09:00-12:30 et 15:30-19:00, Vendredi 09:00-12:30 et 15:30-19:00, Samedi 09:00-12:30 et 15:30-19:00, Dimanche",
+      "services": [
+        "Vente de pétrole lampant",
+        "Station de gonflage",
+        "Piste poids lourds",
+        "Lavage automatique",
+        "Lavage manuel",
+        "Vente de gaz domestique (Butane, Propane)",
+        "Automate CB 24/24",
+        "DAB (Distributeur automatique de billets)"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
       "address": "1215 Avenue de Miage",
       "automate24h": true,
       "availableFuelLabels": [
@@ -348851,55 +348905,6 @@
         "Vente de gaz domestique (Butane, Propane)",
         "Vente d'additifs carburants",
         "Automate CB 24/24"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
-      "address": "zac du grand rieux",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "e85",
-        "e10",
-        "sp98"
-      ],
-      "city": "Aixe Sur Vienne",
-      "coordinates": {
-        "latitude": 45.798,
-        "longitude": 1.124
-      },
-      "department": "Dept. 87",
-      "id": 87700005,
-      "postcode": "87700",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-17T07:40:54",
-          "value": 1.999
-        },
-        "e85": {
-          "updatedAt": "2026-03-13T09:34:39",
-          "value": 0.719
-        },
-        "e10": {
-          "updatedAt": "2026-03-17T07:40:55",
-          "value": 1.859
-        },
-        "sp98": {
-          "updatedAt": "2026-03-17T07:40:55",
-          "value": 1.959
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi 09:00-12:30, Mardi 09:00-12:30, Mercredi 09:00-12:30 et 15:30-19:00, Jeudi 09:00-12:30 et 15:30-19:00, Vendredi 09:00-12:30 et 15:30-19:00, Samedi 09:00-12:30 et 15:30-19:00, Dimanche",
-      "services": [
-        "Vente de pétrole lampant",
-        "Station de gonflage",
-        "Piste poids lourds",
-        "Lavage automatique",
-        "Lavage manuel",
-        "Vente de gaz domestique (Butane, Propane)",
-        "Automate CB 24/24",
-        "DAB (Distributeur automatique de billets)"
       ],
       "unavailableFuelLabels": []
     },
@@ -352127,6 +352132,53 @@
       "unavailableFuelLabels": []
     },
     {
+      "address": "46 Avenue Franklin Roosevelt",
+      "automate24h": false,
+      "availableFuelLabels": [
+        "gazole",
+        "sp95",
+        "e10",
+        "sp98"
+      ],
+      "city": "Le Cannet",
+      "coordinates": {
+        "latitude": 43.573,
+        "longitude": 7.001
+      },
+      "department": "Dept. 06",
+      "id": 6110006,
+      "postcode": "06110",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-18T08:00:00",
+          "value": 2.029
+        },
+        "sp95": {
+          "updatedAt": "2026-03-18T08:00:00",
+          "value": 1.989
+        },
+        "e10": {
+          "updatedAt": "2026-03-18T08:00:00",
+          "value": 1.929
+        },
+        "sp98": {
+          "updatedAt": "2026-03-18T08:00:00",
+          "value": 2.029
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
+      "services": [
+        "Vente de pétrole lampant",
+        "Station de gonflage",
+        "Carburant additivé",
+        "Piste poids lourds",
+        "Bornes électriques",
+        "DAB (Distributeur automatique de billets)"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
       "address": "8 rue Marcel Battelier Pizancon",
       "automate24h": true,
       "availableFuelLabels": [
@@ -352636,53 +352688,6 @@
         "Lavage automatique",
         "Lavage manuel",
         "Vente de gaz domestique (Butane, Propane)",
-        "DAB (Distributeur automatique de billets)"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
-      "address": "46 Avenue Franklin Roosevelt",
-      "automate24h": false,
-      "availableFuelLabels": [
-        "gazole",
-        "sp95",
-        "e10",
-        "sp98"
-      ],
-      "city": "Le Cannet",
-      "coordinates": {
-        "latitude": 43.573,
-        "longitude": 7.001
-      },
-      "department": "Dept. 06",
-      "id": 6110006,
-      "postcode": "06110",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-18T08:00:00",
-          "value": 2.029
-        },
-        "sp95": {
-          "updatedAt": "2026-03-18T08:00:00",
-          "value": 1.989
-        },
-        "e10": {
-          "updatedAt": "2026-03-18T08:00:00",
-          "value": 1.929
-        },
-        "sp98": {
-          "updatedAt": "2026-03-18T08:00:00",
-          "value": 2.029
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
-      "services": [
-        "Vente de pétrole lampant",
-        "Station de gonflage",
-        "Carburant additivé",
-        "Piste poids lourds",
-        "Bornes électriques",
         "DAB (Distributeur automatique de billets)"
       ],
       "unavailableFuelLabels": []
@@ -353993,53 +353998,6 @@
       "unavailableFuelLabels": []
     },
     {
-      "address": "Chemin départemental",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "sp95",
-        "e85"
-      ],
-      "city": "Ay Sur Moselle",
-      "coordinates": {
-        "latitude": 49.241,
-        "longitude": 6.21
-      },
-      "department": "Dept. 57",
-      "id": 57300002,
-      "postcode": "57300",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-17T07:13:14",
-          "value": 2.09
-        },
-        "sp95": {
-          "updatedAt": "2026-03-12T18:15:25",
-          "value": 1.99
-        },
-        "e85": {
-          "updatedAt": "2026-03-03T07:11:01",
-          "value": 0.779
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi 07:00-19:00, Mardi 07:00-19:00, Mercredi 07:00-19:00, Jeudi 07:00-19:00, Vendredi 07:00-19:00, Samedi 07:30-13:00 et 13:00-13:00, Dimanche ferme",
-      "services": [
-        "Boutique alimentaire",
-        "Boutique non alimentaire",
-        "Station de gonflage",
-        "Carburant additivé",
-        "Piste poids lourds",
-        "Lavage automatique",
-        "Services réparation / entretien",
-        "Vente de gaz domestique (Butane, Propane)",
-        "Vente d'additifs carburants",
-        "Automate CB 24/24",
-        "DAB (Distributeur automatique de billets)"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
       "address": "9 BOULEVARD DE LA MADELEINE",
       "automate24h": false,
       "availableFuelLabels": [
@@ -354327,6 +354285,53 @@
       "unavailableFuelLabels": []
     },
     {
+      "address": "Chemin départemental",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "sp95",
+        "e85"
+      ],
+      "city": "Ay Sur Moselle",
+      "coordinates": {
+        "latitude": 49.241,
+        "longitude": 6.21
+      },
+      "department": "Dept. 57",
+      "id": 57300002,
+      "postcode": "57300",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-17T07:13:14",
+          "value": 2.09
+        },
+        "sp95": {
+          "updatedAt": "2026-03-12T18:15:25",
+          "value": 1.99
+        },
+        "e85": {
+          "updatedAt": "2026-03-03T07:11:01",
+          "value": 0.779
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi 07:00-19:00, Mardi 07:00-19:00, Mercredi 07:00-19:00, Jeudi 07:00-19:00, Vendredi 07:00-19:00, Samedi 07:30-13:00 et 13:00-13:00, Dimanche ferme",
+      "services": [
+        "Boutique alimentaire",
+        "Boutique non alimentaire",
+        "Station de gonflage",
+        "Carburant additivé",
+        "Piste poids lourds",
+        "Lavage automatique",
+        "Services réparation / entretien",
+        "Vente de gaz domestique (Butane, Propane)",
+        "Vente d'additifs carburants",
+        "Automate CB 24/24",
+        "DAB (Distributeur automatique de billets)"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
       "address": "29 ZAE du Peyrou",
       "automate24h": true,
       "availableFuelLabels": [
@@ -354431,43 +354436,6 @@
       "unavailableFuelLabels": []
     },
     {
-      "address": "ZA Le Ponson Moulon",
-      "automate24h": false,
-      "availableFuelLabels": [
-        "gazole",
-        "e10",
-        "sp98"
-      ],
-      "city": "Aubenas",
-      "coordinates": {
-        "latitude": 44.615471044958,
-        "longitude": 4.407391560974101
-      },
-      "department": "Dept. 07",
-      "id": 7200007,
-      "postcode": "07200",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-18T08:09:34",
-          "value": 1.999
-        },
-        "e10": {
-          "updatedAt": "2026-03-18T10:31:48",
-          "value": 1.957
-        },
-        "sp98": {
-          "updatedAt": "2026-03-18T08:09:34",
-          "value": 2.012
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
-      "services": [
-        "Piste poids lourds"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
       "address": "Quartier les Plantiers",
       "automate24h": false,
       "availableFuelLabels": [
@@ -354552,6 +354520,43 @@
         "Lavage manuel",
         "Wifi",
         "DAB (Distributeur automatique de billets)"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
+      "address": "ZA Le Ponson Moulon",
+      "automate24h": false,
+      "availableFuelLabels": [
+        "gazole",
+        "e10",
+        "sp98"
+      ],
+      "city": "Aubenas",
+      "coordinates": {
+        "latitude": 44.615471044958,
+        "longitude": 4.407391560974101
+      },
+      "department": "Dept. 07",
+      "id": 7200007,
+      "postcode": "07200",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-18T08:09:34",
+          "value": 1.999
+        },
+        "e10": {
+          "updatedAt": "2026-03-18T10:31:48",
+          "value": 1.957
+        },
+        "sp98": {
+          "updatedAt": "2026-03-18T08:09:34",
+          "value": 2.012
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
+      "services": [
+        "Piste poids lourds"
       ],
       "unavailableFuelLabels": []
     },
@@ -378311,43 +378316,6 @@
       "unavailableFuelLabels": []
     },
     {
-      "address": "142/144 AVENUE FRANKLIN ROOSEVELT",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "e85",
-        "e10"
-      ],
-      "city": "Bron",
-      "coordinates": {
-        "latitude": 45.732573857333996,
-        "longitude": 4.908295858003799
-      },
-      "department": "Dept. 69",
-      "id": 69500013,
-      "postcode": "69500",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-15T10:36:31",
-          "value": 2.079
-        },
-        "e85": {
-          "updatedAt": "2026-03-10T07:55:04",
-          "value": 0.758
-        },
-        "e10": {
-          "updatedAt": "2026-03-15T10:36:31",
-          "value": 1.884
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
-      "services": [
-        "Automate CB 24/24"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
       "address": "Rue Denis Papin",
       "automate24h": true,
       "availableFuelLabels": [
@@ -378844,6 +378812,43 @@
         "Bornes électriques",
         "Wifi",
         "DAB (Distributeur automatique de billets)"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
+      "address": "142/144 AVENUE FRANKLIN ROOSEVELT",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "e85",
+        "e10"
+      ],
+      "city": "Bron",
+      "coordinates": {
+        "latitude": 45.732573857333996,
+        "longitude": 4.908295858003799
+      },
+      "department": "Dept. 69",
+      "id": 69500013,
+      "postcode": "69500",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-19T16:18:00",
+          "value": 2.139
+        },
+        "e85": {
+          "updatedAt": "2026-03-10T07:55:04",
+          "value": 0.758
+        },
+        "e10": {
+          "updatedAt": "2026-03-19T16:18:00",
+          "value": 1.964
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
+      "services": [
+        "Automate CB 24/24"
       ],
       "unavailableFuelLabels": []
     },
@@ -382435,8 +382440,8 @@
       "postcode": "79500",
       "prices": {
         "gazole": {
-          "updatedAt": "2026-03-13T10:36:17",
-          "value": 2.16
+          "updatedAt": "2026-03-19T16:11:24",
+          "value": 2.34
         },
         "e10": {
           "updatedAt": "2026-03-13T10:36:18",
@@ -382814,16 +382819,16 @@
       "postcode": "33320",
       "prices": {
         "gazole": {
-          "updatedAt": "2026-03-17T09:47:41",
-          "value": 2.069
+          "updatedAt": "2026-03-19T16:05:55",
+          "value": 2.099
         },
         "sp95": {
-          "updatedAt": "2026-03-13T10:11:48",
-          "value": 1.959
+          "updatedAt": "2026-03-19T16:05:55",
+          "value": 2.025
         },
         "sp98": {
-          "updatedAt": "2026-03-13T10:11:48",
-          "value": 1.989
+          "updatedAt": "2026-03-19T16:05:55",
+          "value": 2.055
         }
       },
       "region": "France",
@@ -389825,43 +389830,6 @@
       "unavailableFuelLabels": []
     },
     {
-      "address": "1 RUE SAINT JEAN",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "sp95",
-        "sp98"
-      ],
-      "city": "Mons En Pevele",
-      "coordinates": {
-        "latitude": 50.478,
-        "longitude": 3.11
-      },
-      "department": "Dept. 59",
-      "id": 59246005,
-      "postcode": "59246",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-11T09:22:47",
-          "value": 2.119
-        },
-        "sp95": {
-          "updatedAt": "2026-03-11T09:22:47",
-          "value": 1.929
-        },
-        "sp98": {
-          "updatedAt": "2026-03-11T09:22:47",
-          "value": 1.969
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
-      "services": [
-        "Automate CB 24/24"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
       "address": "Autoroute A19",
       "automate24h": true,
       "availableFuelLabels": [
@@ -389903,6 +389871,43 @@
       },
       "region": "France",
       "schedule": "Lundi ferme, Mardi ferme, Mercredi ferme, Jeudi ferme, Vendredi ferme, Samedi ferme, Dimanche ferme",
+      "services": [
+        "Automate CB 24/24"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
+      "address": "1 RUE SAINT JEAN",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "sp95",
+        "sp98"
+      ],
+      "city": "Mons En Pevele",
+      "coordinates": {
+        "latitude": 50.478,
+        "longitude": 3.11
+      },
+      "department": "Dept. 59",
+      "id": 59246005,
+      "postcode": "59246",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-11T09:22:47",
+          "value": 2.119
+        },
+        "sp95": {
+          "updatedAt": "2026-03-11T09:22:47",
+          "value": 1.929
+        },
+        "sp98": {
+          "updatedAt": "2026-03-11T09:22:47",
+          "value": 1.969
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
       "services": [
         "Automate CB 24/24"
       ],
@@ -392671,38 +392676,6 @@
       "unavailableFuelLabels": []
     },
     {
-      "address": "Autoroute A19",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "sp98"
-      ],
-      "city": "Mareau Aux Bois",
-      "coordinates": {
-        "latitude": 48.117,
-        "longitude": 2.19
-      },
-      "department": "Dept. 45",
-      "id": 45300009,
-      "postcode": "45300",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-17T15:39:07",
-          "value": 2.109
-        },
-        "sp98": {
-          "updatedAt": "2026-03-17T15:39:07",
-          "value": 2.139
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
-      "services": [
-        "Automate CB 24/24"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
       "address": "Route de la Baule",
       "automate24h": true,
       "availableFuelLabels": [
@@ -392751,6 +392724,38 @@
         "Bornes électriques",
         "Automate CB 24/24",
         "DAB (Distributeur automatique de billets)"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
+      "address": "Autoroute A19",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "sp98"
+      ],
+      "city": "Mareau Aux Bois",
+      "coordinates": {
+        "latitude": 48.117,
+        "longitude": 2.19
+      },
+      "department": "Dept. 45",
+      "id": 45300009,
+      "postcode": "45300",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-17T15:39:07",
+          "value": 2.109
+        },
+        "sp98": {
+          "updatedAt": "2026-03-17T15:39:07",
+          "value": 2.139
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
+      "services": [
+        "Automate CB 24/24"
       ],
       "unavailableFuelLabels": []
     },
@@ -401726,6 +401731,41 @@
       "unavailableFuelLabels": []
     },
     {
+      "address": "23 ROUTE DE BRESSUIRE",
+      "automate24h": false,
+      "availableFuelLabels": [
+        "gazole",
+        "sp95"
+      ],
+      "city": "La Chapelle Saint Laurent",
+      "coordinates": {
+        "latitude": 46.748,
+        "longitude": -0.476
+      },
+      "department": "Dept. 79",
+      "id": 79430001,
+      "postcode": "79430",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-19T16:03:33",
+          "value": 2.09
+        },
+        "sp95": {
+          "updatedAt": "2026-03-19T16:03:33",
+          "value": 1.99
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi 07:45-12:30 et 13:30-19:00, Mardi 07:45-12:30 et 13:30-19:00, Mercredi 07:45-12:30 et 13:30-19:00, Jeudi 07:45-12:30 et 13:30-19:00, Vendredi 07:45-12:30 et 13:30-19:00, Samedi 09:00-12:00, Dimanche ferme",
+      "services": [
+        "Station de gonflage",
+        "Carburant additivé",
+        "Services réparation / entretien",
+        "Vente d'additifs carburants"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
       "address": "9 rue des Pélerins",
       "automate24h": false,
       "availableFuelLabels": [
@@ -401935,41 +401975,6 @@
         "Carburant additivé",
         "Lavage automatique",
         "Wifi"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
-      "address": "23 ROUTE DE BRESSUIRE",
-      "automate24h": false,
-      "availableFuelLabels": [
-        "gazole",
-        "sp95"
-      ],
-      "city": "La Chapelle Saint Laurent",
-      "coordinates": {
-        "latitude": 46.748,
-        "longitude": -0.476
-      },
-      "department": "Dept. 79",
-      "id": 79430001,
-      "postcode": "79430",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-17T15:31:59",
-          "value": 2.09
-        },
-        "sp95": {
-          "updatedAt": "2026-03-17T15:32:00",
-          "value": 1.99
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi 07:45-12:30 et 13:30-19:00, Mardi 07:45-12:30 et 13:30-19:00, Mercredi 07:45-12:30 et 13:30-19:00, Jeudi 07:45-12:30 et 13:30-19:00, Vendredi 07:45-12:30 et 13:30-19:00, Samedi 09:00-12:00, Dimanche ferme",
-      "services": [
-        "Station de gonflage",
-        "Carburant additivé",
-        "Services réparation / entretien",
-        "Vente d'additifs carburants"
       ],
       "unavailableFuelLabels": []
     },
@@ -413216,24 +413221,24 @@
       "postcode": "27210",
       "prices": {
         "gazole": {
-          "updatedAt": "2026-03-17T15:42:29",
-          "value": 2.159
+          "updatedAt": "2026-03-19T16:00:29",
+          "value": 2.169
         },
         "e85": {
-          "updatedAt": "2026-03-13T14:24:29",
+          "updatedAt": "2026-03-19T16:00:30",
           "value": 0.989
         },
         "gplc": {
-          "updatedAt": "2026-03-13T14:24:29",
+          "updatedAt": "2026-03-19T16:00:30",
           "value": 1.064
         },
         "e10": {
-          "updatedAt": "2026-03-13T14:24:29",
-          "value": 1.999
+          "updatedAt": "2026-03-19T16:00:30",
+          "value": 2.029
         },
         "sp98": {
-          "updatedAt": "2026-03-13T14:24:30",
-          "value": 2.099
+          "updatedAt": "2026-03-19T16:00:30",
+          "value": 2.129
         }
       },
       "region": "France",
@@ -427663,6 +427668,44 @@
       "unavailableFuelLabels": []
     },
     {
+      "address": "7 AVENUE DES BOCQUIES",
+      "automate24h": true,
+      "availableFuelLabels": [
+        "gazole",
+        "e10",
+        "sp98"
+      ],
+      "city": "Evian Les Bains",
+      "coordinates": {
+        "latitude": 46.39647900000001,
+        "longitude": 6.573086999999999
+      },
+      "department": "Dept. 74",
+      "id": 74500011,
+      "postcode": "74500",
+      "prices": {
+        "gazole": {
+          "updatedAt": "2026-03-18T01:01:00",
+          "value": 2.109
+        },
+        "e10": {
+          "updatedAt": "2026-03-18T00:01:00",
+          "value": 2.019
+        },
+        "sp98": {
+          "updatedAt": "2026-03-18T00:01:00",
+          "value": 2.099
+        }
+      },
+      "region": "France",
+      "schedule": "Lundi 00:00-00:00, Mardi 00:00-00:00, Mercredi 00:00-00:00, Jeudi 00:00-00:00, Vendredi 00:00-00:00, Samedi 00:00-00:00, Dimanche 00:00-00:00",
+      "services": [
+        "Carburant additivé",
+        "Automate CB 24/24"
+      ],
+      "unavailableFuelLabels": []
+    },
+    {
       "address": "RUE DU PUY",
       "automate24h": true,
       "availableFuelLabels": [
@@ -428060,44 +428103,6 @@
         "Carburant additivé",
         "Lavage automatique",
         "Vente de gaz domestique (Butane, Propane)",
-        "Automate CB 24/24"
-      ],
-      "unavailableFuelLabels": []
-    },
-    {
-      "address": "7 AVENUE DES BOCQUIES",
-      "automate24h": true,
-      "availableFuelLabels": [
-        "gazole",
-        "e10",
-        "sp98"
-      ],
-      "city": "Evian Les Bains",
-      "coordinates": {
-        "latitude": 46.39647900000001,
-        "longitude": 6.573086999999999
-      },
-      "department": "Dept. 74",
-      "id": 74500011,
-      "postcode": "74500",
-      "prices": {
-        "gazole": {
-          "updatedAt": "2026-03-18T01:01:00",
-          "value": 2.109
-        },
-        "e10": {
-          "updatedAt": "2026-03-18T00:01:00",
-          "value": 2.019
-        },
-        "sp98": {
-          "updatedAt": "2026-03-18T00:01:00",
-          "value": 2.099
-        }
-      },
-      "region": "France",
-      "schedule": "Lundi 00:00-00:00, Mardi 00:00-00:00, Mercredi 00:00-00:00, Jeudi 00:00-00:00, Vendredi 00:00-00:00, Samedi 00:00-00:00, Dimanche 00:00-00:00",
-      "services": [
-        "Carburant additivé",
         "Automate CB 24/24"
       ],
       "unavailableFuelLabels": []

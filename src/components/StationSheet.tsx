@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
 import { Clock3, Coffee, MapPin, Navigation, ShieldCheck, ShoppingBag, Sparkles, Waves, X } from 'lucide-react-native';
 
 import { Station } from '../lib/carburantsApi';
@@ -22,16 +21,18 @@ type StationSheetProps = {
   visibleStations: Station[];
 };
 
-type DynamicCardData = {
-  delta: number | null;
+type ComparisonCardData = {
+  averageDelta: number | null;
+  averagePrice: number | null;
+  bestPrice: number;
   fuel: (typeof FUEL_OPTIONS)[number];
   priceValue: number;
-  sampleCount: number;
-  series: number[];
+  rank: number;
+  stationCount: number;
+  worstPrice: number;
 };
 
 const quickServiceIcons = [ShoppingBag, Waves, Sparkles, Coffee];
-const MAX_GRAPH_POINTS = 10;
 
 export function StationSheet({
   activeFuel,
@@ -44,7 +45,6 @@ export function StationSheet({
 }: StationSheetProps) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1080;
-  const isCompact = width < 720;
   const isNarrow = width < 480;
   const spotlightPrice = getDisplayPrice(station, activeFuel);
   const distance = userLocation ? formatDistanceLabel(getDistanceInKm(userLocation, station.coordinates)) : null;
@@ -53,7 +53,7 @@ export function StationSheet({
   const brand = officialDetails?.brand ?? getStationBrand(station);
   const stationName = officialDetails?.name;
   const cardWidth = isDesktop ? 376 : Math.min(width - 32, 440);
-  const dynamicCards = getDynamicCardData(station, visibleStations).slice(0, 2);
+  const comparisonCards = getComparisonCardData(station, visibleStations, activeFuel);
 
   useEffect(() => {
     let isMounted = true;
@@ -73,91 +73,118 @@ export function StationSheet({
 
   return (
     <View style={[styles.sheet, shadows.floating, { width: cardWidth }, isDesktop && styles.sheetDesktop]}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {!isDesktop ? <View style={styles.handle} /> : null}
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} stickyHeaderIndices={[0]}>
+        <View style={styles.stickyHeader}>
+          {!isDesktop ? <View style={styles.handle} /> : null}
 
-        <View style={styles.topRow}>
-          <View style={styles.topMeta}>
-            <View style={styles.openBadge}>
-              <Text style={styles.openBadgeText}>{t.stationSheet.open}</Text>
+          <View style={styles.topRow}>
+            <View style={styles.topMeta}>
+              <View style={styles.openBadge}>
+                <Text style={styles.openBadgeText}>{t.stationSheet.open}</Text>
+              </View>
+              {brand ? (
+                <View style={styles.brandBadge}>
+                  <Text style={styles.brandBadgeText}>{brand}</Text>
+                </View>
+              ) : null}
             </View>
-            {brand ? (
-              <View style={styles.brandBadge}>
-                <Text style={styles.brandBadgeText}>{brand}</Text>
+            <Pressable onPress={onClose} style={styles.iconButton}>
+              <X color={colors.subtleTextStrong} size={18} />
+            </Pressable>
+          </View>
+
+          <Text style={styles.title}>
+            {station.city} {station.postcode}
+          </Text>
+          {stationName ? <Text style={styles.stationName}>{stationName}</Text> : null}
+          <Text style={styles.subtitle}>{station.address}</Text>
+
+          <Pressable onPress={onOpenDirections} style={styles.navigateButton}>
+            <Navigation color={colors.textOnLight} size={18} />
+            <Text style={styles.navigateText}>{t.stationSheet.navigate}</Text>
+          </Pressable>
+
+          <View style={styles.metaStrip}>
+            <View style={styles.metaPill}>
+              <MapPin color={colors.subtleTextStrong} size={13} />
+              <Text style={styles.metaText}>{station.department}</Text>
+            </View>
+            {station.automate24h ? (
+              <View style={[styles.metaPill, styles.metaPillMint]}>
+                <ShieldCheck color={colors.mint} size={13} />
+                <Text style={[styles.metaText, styles.metaMintText]}>24/24</Text>
+              </View>
+            ) : null}
+            {distance ? (
+              <View style={styles.metaPill}>
+                <Navigation color={colors.aqua} size={13} />
+                <Text style={styles.metaText}>{distance}</Text>
               </View>
             ) : null}
           </View>
-          <Pressable onPress={onClose} style={styles.iconButton}>
-            <X color={colors.subtleTextStrong} size={18} />
-          </Pressable>
-        </View>
-
-        <Text style={styles.title}>
-          {station.city} {station.postcode}
-        </Text>
-        {stationName ? <Text style={styles.stationName}>{stationName}</Text> : null}
-        <Text style={styles.subtitle}>{station.address}</Text>
-
-        <Pressable onPress={onOpenDirections} style={styles.navigateButton}>
-          <Navigation color={colors.textOnLight} size={18} />
-          <Text style={styles.navigateText}>{t.stationSheet.navigate}</Text>
-        </Pressable>
-
-        <View style={styles.metaStrip}>
-          <View style={styles.metaPill}>
-            <MapPin color={colors.subtleTextStrong} size={13} />
-            <Text style={styles.metaText}>{station.department}</Text>
-          </View>
-          {station.automate24h ? (
-            <View style={[styles.metaPill, styles.metaPillMint]}>
-              <ShieldCheck color={colors.mint} size={13} />
-              <Text style={[styles.metaText, styles.metaMintText]}>24/24</Text>
-            </View>
-          ) : null}
-          {distance ? (
-            <View style={styles.metaPill}>
-              <Navigation color={colors.aqua} size={13} />
-              <Text style={styles.metaText}>{distance}</Text>
-            </View>
-          ) : null}
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{t.stationSheet.dynamics}</Text>
-          <Text style={styles.sectionMeta}>{t.stationSheet.lastThirtyDays}</Text>
+          <Text style={styles.sectionTitle}>{t.stationSheet.compareTitle}</Text>
+          <Text style={styles.sectionMeta}>{t.stationSheet.compareMeta}</Text>
         </View>
 
         <View style={styles.dynamicsList}>
-          {dynamicCards.map((card) => (
-            <View
-              key={card.fuel.key}
-              style={[styles.dynamicCard, isCompact && styles.dynamicCardCompact]}
-            >
-              <View style={styles.dynamicCopy}>
-                <View style={styles.dynamicLabelRow}>
-                  <Text style={styles.dynamicLabel}>{card.fuel.label}</Text>
-                  <Text style={styles.dynamicSamples}>{card.sampleCount} stations</Text>
-                </View>
-                <View style={styles.dynamicValueRow}>
+          {comparisonCards.map((card) => (
+            <View key={card.fuel.key} style={styles.dynamicCard}>
+              <View style={styles.compareTopRow}>
+                <View style={styles.compareTitleBlock}>
+                  <View style={styles.compareFuelRow}>
+                    <View style={[styles.compareFuelDot, { backgroundColor: card.fuel.accent }]} />
+                    <Text style={styles.dynamicLabel}>{card.fuel.label}</Text>
+                    {activeFuel !== 'all' && activeFuel === card.fuel.key ? (
+                      <View style={styles.compareActiveBadge}>
+                        <Text style={styles.compareActiveBadgeText}>{t.stationSheet.currentFuel}</Text>
+                      </View>
+                    ) : null}
+                  </View>
                   <Text style={styles.dynamicValue}>{formatPrice(card.priceValue)}</Text>
-                  {card.delta != null ? (
-                    <Text style={[styles.dynamicDelta, card.delta >= 0 ? styles.dynamicDeltaUp : styles.dynamicDeltaDown]}>
-                      {formatDelta(card.delta)}
-                    </Text>
-                  ) : null}
+                </View>
+
+                <View style={styles.compareRankBadge}>
+                  <Text style={styles.compareRankLabel}>{t.stationSheet.ranking}</Text>
+                  <Text style={styles.compareRankValue}>{formatRank(card.rank, card.stationCount)}</Text>
                 </View>
               </View>
 
-              <MiniMarketChart
+              <Text
+                style={[
+                  styles.compareMessage,
+                  card.averageDelta == null
+                    ? styles.compareMessageNeutral
+                    : card.averageDelta >= 0
+                      ? styles.compareMessagePositive
+                      : styles.compareMessageNegative,
+                ]}
+              >
+                {formatComparisonMessage(card.averageDelta, language)}
+              </Text>
+
+              <ComparisonBar
                 accent={card.fuel.accent}
-                compact={isCompact}
-                focusValue={card.priceValue}
-                series={card.series}
+                averagePrice={card.averagePrice}
+                bestPrice={card.bestPrice}
+                priceValue={card.priceValue}
+                worstPrice={card.worstPrice}
               />
+
+              <View style={styles.compareMetricsRow}>
+                <Metric label={t.stationSheet.zoneBest} value={formatPrice(card.bestPrice)} />
+                <Metric
+                  label={t.stationSheet.zoneAverage}
+                  value={card.averagePrice != null ? formatPrice(card.averagePrice) : '--'}
+                />
+                <Metric label={t.stationSheet.zoneWorst} value={formatPrice(card.worstPrice)} />
+              </View>
             </View>
           ))}
 
-          {dynamicCards.length === 0 ? (
+          {comparisonCards.length === 0 ? (
             <View style={styles.dynamicCard}>
               <Text style={styles.dynamicLabel}>{t.stationSheet.noPrice}</Text>
             </View>
@@ -239,86 +266,131 @@ export function StationSheet({
   );
 }
 
-function MiniMarketChart({
-  accent,
-  compact,
-  focusValue,
-  series,
-}: {
-  accent: string;
-  compact: boolean;
-  focusValue: number;
-  series: number[];
-}) {
-  const width = compact ? 124 : 108;
-  const height = compact ? 56 : 48;
-  const chartSeries = series.length === 1 ? [series[0], series[0]] : series;
-  const chartWidth = width - 8;
-  const chartHeight = height - 12;
-  const min = Math.min(...chartSeries);
-  const max = Math.max(...chartSeries);
-  const valueRange = max - min || 1;
-  const points = chartSeries.map((entry, index) => {
-    const x = 4 + (chartWidth * index) / Math.max(chartSeries.length - 1, 1);
-    const y = 6 + chartHeight - ((entry - min) / valueRange) * chartHeight;
-
-    return { x, y, value: entry };
-  });
-  const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
-  const areaPath = `${linePath} L ${points[points.length - 1].x} ${height - 6} L ${points[0].x} ${height - 6} Z`;
-  const focusPoint = points.reduce((closest, point) =>
-    Math.abs(point.value - focusValue) < Math.abs(closest.value - focusValue) ? point : closest,
-  );
-
+function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <Svg height={height} viewBox={`0 0 ${width} ${height}`} width={width}>
-      <Path d={areaPath} fill={accent} opacity={0.12} />
-      <Path d={linePath} fill="none" stroke={accent} strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} />
-      <Circle cx={focusPoint.x} cy={focusPoint.y} fill={colors.white} r={5} stroke={accent} strokeWidth={2.5} />
-    </Svg>
+    <View style={styles.compareMetric}>
+      <Text style={styles.compareMetricLabel}>{label}</Text>
+      <Text style={styles.compareMetricValue}>{value}</Text>
+    </View>
   );
 }
 
-function getDynamicCardData(station: Station, visibleStations: Station[]): DynamicCardData[] {
-  return FUEL_OPTIONS.filter((fuel) => station.prices[fuel.key]).map((fuel) => {
+function ComparisonBar({
+  accent,
+  averagePrice,
+  bestPrice,
+  priceValue,
+  worstPrice,
+}: {
+  accent: string;
+  averagePrice: number | null;
+  bestPrice: number;
+  priceValue: number;
+  worstPrice: number;
+}) {
+  const span = worstPrice - bestPrice || 1;
+  const stationRatio = clampRatio((priceValue - bestPrice) / span);
+  const averageRatio = averagePrice == null ? stationRatio : clampRatio((averagePrice - bestPrice) / span);
+
+  return (
+    <View style={styles.compareBarBlock}>
+      <View style={styles.compareBarTrack}>
+        <View style={[styles.compareBarFill, { backgroundColor: accent, width: `${Math.max(stationRatio * 100, 3)}%` }]} />
+        <View style={[styles.compareBarAverageMarker, { left: `${averageRatio * 100}%` }]} />
+        <View style={[styles.compareBarStationMarker, { borderColor: accent, left: `${stationRatio * 100}%` }]} />
+      </View>
+    </View>
+  );
+}
+
+function getComparisonCardData(
+  station: Station,
+  visibleStations: Station[],
+  activeFuel: FuelFilter,
+): ComparisonCardData[] {
+  const orderedFuels = FUEL_OPTIONS.filter((fuel) => station.prices[fuel.key]).sort((left, right) => {
+    if (activeFuel !== 'all') {
+      if (left.key === activeFuel) {
+        return -1;
+      }
+
+      if (right.key === activeFuel) {
+        return 1;
+      }
+    }
+
+    return (station.prices[left.key]?.value ?? Number.POSITIVE_INFINITY) - (station.prices[right.key]?.value ?? Number.POSITIVE_INFINITY);
+  });
+
+  return orderedFuels.map((fuel) => {
     const priceValue = station.prices[fuel.key]?.value ?? 0;
-    const marketSeries = visibleStations
-      .map((candidate) => candidate.prices[fuel.key]?.value)
-      .filter((value): value is number => value != null)
-      .sort((left, right) => left - right);
+    const marketStations = visibleStations
+      .filter((candidate) => candidate.prices[fuel.key] != null)
+      .sort((left, right) => {
+        const leftPrice = left.prices[fuel.key]?.value ?? Number.POSITIVE_INFINITY;
+        const rightPrice = right.prices[fuel.key]?.value ?? Number.POSITIVE_INFINITY;
+
+        if (leftPrice === rightPrice) {
+          return left.id - right.id;
+        }
+
+        return leftPrice - rightPrice;
+      });
+    const marketPrices = marketStations.map((candidate) => candidate.prices[fuel.key]?.value ?? 0);
     const averagePrice =
-      marketSeries.length > 0
-        ? marketSeries.reduce((total, value) => total + value, 0) / marketSeries.length
+      marketPrices.length > 0
+        ? marketPrices.reduce((total, value) => total + value, 0) / marketPrices.length
         : null;
+    const rank = Math.max(
+      1,
+      marketStations.findIndex((candidate) => candidate.id === station.id) + 1,
+    );
 
     return {
-      delta: averagePrice == null ? null : Number((averagePrice - priceValue).toFixed(2)),
+      averageDelta: averagePrice == null ? null : Number((averagePrice - priceValue).toFixed(3)),
+      averagePrice: averagePrice == null ? null : Number(averagePrice.toFixed(3)),
+      bestPrice: marketPrices[0] ?? priceValue,
       fuel,
       priceValue,
-      sampleCount: marketSeries.length,
-      series: pickSeriesPoints(marketSeries, priceValue),
+      rank,
+      stationCount: marketPrices.length,
+      worstPrice: marketPrices[marketPrices.length - 1] ?? priceValue,
     };
   });
 }
 
-function pickSeriesPoints(values: number[], priceValue: number) {
-  if (values.length === 0) {
-    return [priceValue];
+function formatComparisonMessage(delta: number | null, language: AppLanguage) {
+  const t = copy[language].stationSheet;
+
+  if (delta == null) {
+    return t.noPrice;
   }
 
-  if (values.length <= MAX_GRAPH_POINTS) {
-    return values;
+  if (Math.abs(delta) < 0.005) {
+    return t.equalToAverage;
   }
 
-  return Array.from({ length: MAX_GRAPH_POINTS }, (_, index) => {
-    const sourceIndex = Math.round((index * (values.length - 1)) / (MAX_GRAPH_POINTS - 1));
-    return values[sourceIndex];
-  });
+  if (delta > 0) {
+    return `${formatDeltaValue(delta)} ${t.cheaperThanAverage}`;
+  }
+
+  return `${formatDeltaValue(Math.abs(delta))} ${t.moreExpensiveThanAverage}`;
 }
 
-function formatDelta(value: number) {
-  const prefix = value >= 0 ? '+' : '';
-  return `${prefix}${value.toFixed(2).replace('.', ',')}`;
+function formatDeltaValue(value: number) {
+  return `${value.toFixed(3).replace('.', ',')} €`;
+}
+
+function formatRank(rank: number, stationCount: number) {
+  return `#${rank}/${stationCount}`;
+}
+
+function clampRatio(value: number) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.min(1, Math.max(0, value));
 }
 
 const styles = StyleSheet.create({
@@ -336,6 +408,13 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 20,
+  },
+  stickyHeader: {
+    backgroundColor: colors.panelRaised,
+    marginHorizontal: -18,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 18,
   },
   handle: {
     alignSelf: 'center',
@@ -477,28 +556,68 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   dynamicCard: {
-    alignItems: 'center',
     backgroundColor: colors.white,
     borderColor: colors.borderStrong,
     borderRadius: 22,
     borderWidth: 1,
-    flexDirection: 'row',
     gap: 14,
-    justifyContent: 'space-between',
     paddingHorizontal: 14,
     paddingVertical: 14,
   },
-  dynamicCardCompact: {
+  compareTopRow: {
     alignItems: 'flex-start',
-    flexDirection: 'column',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
   },
-  dynamicCopy: {
+  compareTitleBlock: {
     flex: 1,
+    gap: 8,
   },
-  dynamicLabelRow: {
+  compareFuelRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  compareFuelDot: {
+    borderRadius: 999,
+    height: 10,
+    width: 10,
+  },
+  compareActiveBadge: {
+    backgroundColor: '#FFF4DD',
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  compareActiveBadgeText: {
+    color: colors.subtleTextStrong,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 10,
+  },
+  compareRankBadge: {
+    alignItems: 'flex-end',
+    backgroundColor: colors.surfaceSoft,
+    borderColor: colors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    minWidth: 78,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  compareRankLabel: {
+    color: colors.subtleText,
+    fontFamily: 'SpaceGrotesk_500Medium',
+    fontSize: 10,
+  },
+  compareRankValue: {
+    color: colors.text,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 14,
+    marginTop: 2,
   },
   dynamicLabel: {
     color: colors.subtleTextStrong,
@@ -507,31 +626,84 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
-  dynamicSamples: {
+  dynamicValue: {
+    color: colors.text,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 22,
+  },
+  compareMessage: {
+    fontFamily: 'SpaceGrotesk_500Medium',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  compareMessagePositive: {
+    color: colors.mint,
+  },
+  compareMessageNegative: {
+    color: colors.coral,
+  },
+  compareMessageNeutral: {
+    color: colors.subtleTextStrong,
+  },
+  compareBarBlock: {
+    paddingTop: 2,
+  },
+  compareBarTrack: {
+    backgroundColor: colors.mist,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 14,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  compareBarFill: {
+    borderRadius: 999,
+    height: '100%',
+  },
+  compareBarAverageMarker: {
+    backgroundColor: colors.subtleText,
+    height: 20,
+    position: 'absolute',
+    top: -3,
+    transform: [{ translateX: -1 }],
+    width: 2,
+  },
+  compareBarStationMarker: {
+    backgroundColor: colors.white,
+    borderRadius: 999,
+    borderWidth: 3,
+    height: 14,
+    position: 'absolute',
+    top: -1,
+    transform: [{ translateX: -7 }],
+    width: 14,
+  },
+  compareMetricsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  compareMetric: {
+    backgroundColor: colors.surfaceSoft,
+    borderColor: colors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexGrow: 1,
+    minWidth: 92,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  compareMetricLabel: {
     color: colors.subtleText,
     fontFamily: 'SpaceGrotesk_500Medium',
     fontSize: 10,
   },
-  dynamicValueRow: {
-    alignItems: 'baseline',
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  dynamicValue: {
+  compareMetricValue: {
     color: colors.text,
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 18,
-  },
-  dynamicDelta: {
-    fontFamily: 'SpaceGrotesk_500Medium',
-    fontSize: 11,
-  },
-  dynamicDeltaUp: {
-    color: colors.mint,
-  },
-  dynamicDeltaDown: {
-    color: colors.coral,
+    fontSize: 13,
+    marginTop: 6,
   },
   servicesGrid: {
     flexDirection: 'row',
