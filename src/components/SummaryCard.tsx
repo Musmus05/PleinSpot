@@ -1,3 +1,5 @@
+import { ChevronDown, ChevronUp } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { Station } from '../lib/carburantsApi';
@@ -26,60 +28,89 @@ export function SummaryCard({
 }: SummaryCardProps) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1080;
+  const isPhone = width < 560;
+  const [isCollapsed, setIsCollapsed] = useState(isPhone);
   const t = copy[language];
+  const resultsToggleLabel = language === 'fr' ? 'Résultats' : 'Results';
+
+  useEffect(() => {
+    if (!isPhone) {
+      setIsCollapsed(false);
+    }
+  }, [isPhone]);
 
   return (
-    <View style={[styles.card, shadows.floating, isDesktop && styles.cardDesktop]}>
+    <View style={[styles.card, shadows.floating, isDesktop && styles.cardDesktop, isPhone && styles.cardPhone]}>
       <View style={styles.header}>
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{t.summary.top3}</Text>
         </View>
-        {isLoading ? <ActivityIndicator color={colors.sun} /> : null}
+        <View style={styles.headerActions}>
+          {isLoading ? <ActivityIndicator color={colors.sun} /> : null}
+          {isPhone ? (
+            <Pressable onPress={() => setIsCollapsed((value) => !value)} style={styles.collapseButton}>
+              <Text style={styles.collapseButtonText}>{resultsToggleLabel}</Text>
+              {isCollapsed ? (
+                <ChevronUp color={colors.subtleTextStrong} size={14} />
+              ) : (
+                <ChevronDown color={colors.subtleTextStrong} size={14} />
+              )}
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
-      <Text style={styles.title}>{t.summary.title}</Text>
-      <Text style={styles.subtitle}>{t.summary.subtitle}</Text>
+      {!isCollapsed ? (
+        <>
+          <Text style={styles.title}>{t.summary.title}</Text>
+          <Text style={styles.subtitle}>{t.summary.subtitle}</Text>
 
-      {stations.length > 0 ? (
-        <ScrollView
-          contentContainerStyle={[styles.rail, isDesktop && styles.railDesktop]}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-        >
-          {stations.map((station, index) => {
-            const price = getStationDisplayPrice(station);
-            const distance = userLocation ? formatDistanceLabel(getDistanceInKm(userLocation, station.coordinates)) : null;
+          {stations.length > 0 ? (
+            <ScrollView
+              contentContainerStyle={[styles.rail, isDesktop ? styles.railDesktop : styles.railMobile]}
+              horizontal={isDesktop}
+              showsHorizontalScrollIndicator={false}
+              showsVerticalScrollIndicator={false}
+            >
+              {stations.map((station, index) => {
+                const price = getStationDisplayPrice(station);
+                const distance = userLocation ? formatDistanceLabel(getDistanceInKm(userLocation, station.coordinates)) : null;
 
-            return (
-              <Pressable key={station.id} onPress={() => onFocusStation(station)} style={styles.stationCard}>
-                <View style={styles.stationTop}>
-                  <View style={styles.rankBubble}>
-                    <Text style={styles.rankText}>{index + 1}</Text>
-                  </View>
-                  {distance ? <Text style={styles.distance}>{distance}</Text> : null}
-                </View>
+                return (
+                  <Pressable
+                    key={station.id}
+                    onPress={() => onFocusStation(station)}
+                    style={[styles.stationCard, !isDesktop && styles.stationCardMobile, isPhone && styles.stationCardPhone]}
+                  >
+                    <View style={styles.stationTop}>
+                      <View style={styles.rankBubble}>
+                        <Text style={styles.rankText}>{index + 1}</Text>
+                      </View>
+                      {distance ? <Text style={styles.distance}>{distance}</Text> : null}
+                    </View>
+                    <Text style={[styles.price, isPhone && styles.pricePhone]}>{price ? formatPrice(price.value) : 'Indispo'}</Text>
+                    <Text style={styles.fuel}>{price ? FUEL_META[price.fuelKey].label : 'Non disponible'}</Text>
 
-                <Text style={styles.price}>{price ? formatPrice(price.value) : 'Indispo'}</Text>
-                <Text style={styles.fuel}>{price ? FUEL_META[price.fuelKey].label : 'Non disponible'}</Text>
+                    <View style={styles.separator} />
 
-                <View style={styles.separator} />
-
-                <Text style={styles.city}>
-                  {station.city} {station.postcode}
-                </Text>
-                <Text numberOfLines={2} style={styles.address}>
-                  {station.address}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      ) : (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>{t.summary.emptyTitle}</Text>
-          <Text style={styles.emptyBody}>{t.summary.emptyBody}</Text>
-        </View>
-      )}
+                    <Text style={styles.city}>
+                      {station.city} {station.postcode}
+                    </Text>
+                    <Text numberOfLines={2} style={styles.address}>
+                      {station.address}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>{t.summary.emptyTitle}</Text>
+              <Text style={styles.emptyBody}>{t.summary.emptyBody}</Text>
+            </View>
+          )}
+        </>
+      ) : null}
     </View>
   );
 }
@@ -94,6 +125,10 @@ const styles = StyleSheet.create({
     padding: 18,
     width: '100%',
   },
+  cardPhone: {
+    borderRadius: 24,
+    padding: 14,
+  },
   cardDesktop: {
     width: 820,
   },
@@ -101,6 +136,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  headerActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
   badge: {
     backgroundColor: colors.surfaceSoft,
@@ -115,6 +155,22 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 10,
     letterSpacing: 0.7,
+  },
+  collapseButton: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceSoft,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  collapseButtonText: {
+    color: colors.subtleTextStrong,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 12,
   },
   title: {
     color: colors.text,
@@ -134,6 +190,9 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingTop: 18,
   },
+  railMobile: {
+    paddingTop: 16,
+  },
   railDesktop: {
     justifyContent: 'center',
   },
@@ -144,6 +203,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 18,
     width: 238,
+  },
+  stationCardMobile: {
+    width: '100%',
+  },
+  stationCardPhone: {
+    padding: 16,
   },
   stationTop: {
     alignItems: 'center',
@@ -173,6 +238,9 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 28,
     marginTop: 18,
+  },
+  pricePhone: {
+    fontSize: 24,
   },
   fuel: {
     color: colors.sun,

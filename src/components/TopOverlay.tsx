@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
-import { Clock3, LocateFixed, MapPinned, MapPin, RefreshCcw, Search, Settings2 } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Clock3, LocateFixed, MapPinned, MapPin, RefreshCcw, Search, Settings2 } from 'lucide-react-native';
 import { useState } from 'react';
 
 import { Station } from '../lib/carburantsApi';
@@ -51,17 +51,25 @@ export function TopOverlay({
 }: TopOverlayProps) {
   const { width } = useWindowDimensions();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
   const isDesktop = width >= 1080;
+  const isTablet = width < 900;
+  const isPhone = width < 560;
   const t = copy[language];
   const activeFuelLabel = FUEL_FILTER_OPTIONS.find((option) => option.key === activeFuel)?.label ?? 'Tout voir';
+  const filtersToggleLabel = language === 'fr' ? 'Filtres' : 'Filters';
+  const infoToggleLabel = language === 'fr' ? 'Infos' : 'Info';
+  const showFilters = !isPhone || isFiltersOpen;
+  const showInfo = !isPhone || isInfoOpen;
 
   return (
-    <View style={styles.topPanel}>
-      <View style={[styles.heroCard, shadows.floating]}>
+    <View style={[styles.topPanel, isPhone && styles.topPanelPhone]}>
+      <View style={[styles.heroCard, shadows.floating, isPhone && styles.heroCardPhone]}>
         <View style={[styles.navRow, isDesktop && styles.navRowDesktop]}>
-          <View style={styles.brandRow}>
+          <View style={[styles.brandRow, isPhone && styles.brandRowPhone]}>
             <BrandMark size={38} />
-            <Text style={styles.brandName}>PleinSpot</Text>
+            <Text style={[styles.brandName, isPhone && styles.brandNamePhone]}>PleinSpot</Text>
           </View>
 
           <View style={[styles.searchShell, isDesktop && styles.searchShellDesktop]}>
@@ -76,7 +84,7 @@ export function TopOverlay({
             />
           </View>
 
-          <View style={styles.navActions}>
+          <View style={[styles.navActions, isPhone && styles.navActionsPhone]}>
             <Pressable onPress={() => setIsSettingsOpen((value) => !value)} style={styles.iconButton}>
               <Settings2 color={colors.subtleTextStrong} size={16} />
             </Pressable>
@@ -94,7 +102,7 @@ export function TopOverlay({
         </View>
 
         {isSettingsOpen ? (
-          <View style={[styles.settingsCard, shadows.card]}>
+          <View style={[styles.settingsCard, shadows.card, isPhone && styles.settingsCardPhone]}>
             <Text style={styles.settingsTitle}>{t.settings.title}</Text>
             <Text style={styles.settingsLabel}>{t.settings.language}</Text>
             <View style={styles.languageRow}>
@@ -168,53 +176,84 @@ export function TopOverlay({
           </View>
         ) : null}
 
-        <View style={[styles.heroBody, isDesktop && styles.heroBodyDesktop]}>
-          <View style={styles.heroMain}>
-            <ScrollView contentContainerStyle={styles.filterRow} horizontal showsHorizontalScrollIndicator={false}>
-              {FUEL_FILTER_OPTIONS.map((option) => {
-                const isActive = option.key === activeFuel;
+        {isPhone ? (
+          <View style={styles.mobileToggleRow}>
+            <Pressable onPress={() => setIsFiltersOpen((value) => !value)} style={styles.mobileToggleChip}>
+              <Text style={styles.mobileToggleText}>{filtersToggleLabel}</Text>
+              {isFiltersOpen ? (
+                <ChevronUp color={colors.subtleTextStrong} size={14} />
+              ) : (
+                <ChevronDown color={colors.subtleTextStrong} size={14} />
+              )}
+            </Pressable>
+            <Pressable onPress={() => setIsInfoOpen((value) => !value)} style={styles.mobileToggleChip}>
+              <Text style={styles.mobileToggleText}>{infoToggleLabel}</Text>
+              {isInfoOpen ? (
+                <ChevronUp color={colors.subtleTextStrong} size={14} />
+              ) : (
+                <ChevronDown color={colors.subtleTextStrong} size={14} />
+              )}
+            </Pressable>
+          </View>
+        ) : null}
 
-                return (
-                  <Pressable
-                    key={option.key}
-                    onPress={() => onChangeFuel(option.key)}
-                    style={[styles.filterChip, isActive && { backgroundColor: option.accent, borderColor: option.accent }]}
-                  >
-                    <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>{option.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+        {showFilters || showInfo ? (
+          <View style={[styles.heroBody, isDesktop && styles.heroBodyDesktop]}>
+            <View style={styles.heroMain}>
+              {showFilters ? (
+                <ScrollView contentContainerStyle={styles.filterRow} horizontal showsHorizontalScrollIndicator={false}>
+                  {FUEL_FILTER_OPTIONS.map((option) => {
+                    const isActive = option.key === activeFuel;
 
-            <View style={styles.heroStats}>
-              <View style={styles.statCard}>
-                <MapPinned color={colors.aqua} size={15} />
-                <View>
-                  <Text style={styles.statLabel}>{t.topOverlay.stations}</Text>
-                  <Text style={styles.statValue}>
-                    {stationsCount} {t.topOverlay.visible}
-                  </Text>
+                    return (
+                      <Pressable
+                        key={option.key}
+                        onPress={() => onChangeFuel(option.key)}
+                        style={[styles.filterChip, isActive && { backgroundColor: option.accent, borderColor: option.accent }]}
+                      >
+                        <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>{option.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              ) : null}
+
+              {showInfo ? (
+                <View style={styles.heroStats}>
+                  <View style={[styles.statCard, isTablet && styles.statCardResponsive, isPhone && styles.statCardPhone]}>
+                    <MapPinned color={colors.aqua} size={15} />
+                    <View>
+                      <Text style={styles.statLabel}>{t.topOverlay.stations}</Text>
+                      <Text style={styles.statValue}>
+                        {stationsCount} {t.topOverlay.visible}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.statCard, isTablet && styles.statCardResponsive, isPhone && styles.statCardPhone]}>
+                    <Clock3 color={colors.sun} size={15} />
+                    <View>
+                      <Text style={styles.statLabel}>{t.topOverlay.syncLabel}</Text>
+                      <Text style={styles.statValue}>
+                        {lastSyncAt ? formatTimestamp(lastSyncAt) : t.topOverlay.syncing}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              </View>
-
-              <View style={styles.statCard}>
-                <Clock3 color={colors.sun} size={15} />
-                <View>
-                  <Text style={styles.statLabel}>{t.topOverlay.syncLabel}</Text>
-                  <Text style={styles.statValue}>
-                    {lastSyncAt ? formatTimestamp(lastSyncAt) : t.topOverlay.syncing}
-                  </Text>
-                </View>
-              </View>
+              ) : null}
             </View>
-          </View>
 
-          <View style={styles.signalCard}>
-            <Text style={styles.signalLabel}>{t.topOverlay.bestPrice}</Text>
-            <Text style={styles.signalPrice}>{priceRange.min != null ? formatPrice(priceRange.min) : '--'}</Text>
-            <Text style={styles.signalCaption}>{activeFuelLabel} dans la zone visible</Text>
+            {showInfo ? (
+              <View style={[styles.signalCard, isTablet && styles.signalCardResponsive, isPhone && styles.signalCardPhone]}>
+                <Text style={styles.signalLabel}>{t.topOverlay.bestPrice}</Text>
+                <Text style={[styles.signalPrice, isPhone && styles.signalPricePhone]}>
+                  {priceRange.min != null ? formatPrice(priceRange.min) : '--'}
+                </Text>
+                <Text style={styles.signalCaption}>{activeFuelLabel} dans la zone visible</Text>
+              </View>
+            ) : null}
           </View>
-        </View>
+        ) : null}
       </View>
     </View>
   );
@@ -228,12 +267,20 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     width: '100%',
   },
+  topPanelPhone: {
+    paddingHorizontal: 10,
+    paddingTop: 10,
+  },
   heroCard: {
     backgroundColor: colors.panel,
     borderColor: colors.border,
     borderRadius: 26,
     borderWidth: 1,
     padding: 16,
+  },
+  heroCardPhone: {
+    borderRadius: 22,
+    padding: 12,
   },
   navRow: {
     gap: 14,
@@ -247,10 +294,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
+  brandRowPhone: {
+    gap: 10,
+  },
   brandName: {
     color: colors.text,
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 22,
+  },
+  brandNamePhone: {
+    fontSize: 18,
   },
   searchShell: {
     alignItems: 'center',
@@ -277,6 +330,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  navActionsPhone: {
+    justifyContent: 'flex-start',
+  },
   iconButton: {
     alignItems: 'center',
     backgroundColor: colors.surfaceSoft,
@@ -296,6 +352,10 @@ const styles = StyleSheet.create({
     marginTop: 12,
     padding: 14,
     width: 220,
+  },
+  settingsCardPhone: {
+    alignSelf: 'stretch',
+    width: '100%',
   },
   settingsTitle: {
     color: colors.text,
@@ -399,6 +459,29 @@ const styles = StyleSheet.create({
     fontSize: 13,
     padding: 14,
   },
+  mobileToggleRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  mobileToggleChip: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceSoft,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  mobileToggleText: {
+    color: colors.subtleTextStrong,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 12,
+  },
   heroBody: {
     gap: 16,
     marginTop: 14,
@@ -435,6 +518,13 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 16,
   },
+  statCardResponsive: {
+    flex: 1,
+    minWidth: 0,
+  },
+  statCardPhone: {
+    width: '100%',
+  },
   statCard: {
     alignItems: 'center',
     backgroundColor: colors.surfaceSoft,
@@ -467,6 +557,13 @@ const styles = StyleSheet.create({
     padding: 18,
     width: 250,
   },
+  signalCardResponsive: {
+    width: '100%',
+  },
+  signalCardPhone: {
+    minHeight: 0,
+    padding: 16,
+  },
   signalLabel: {
     color: colors.subtleTextStrong,
     fontFamily: 'SpaceGrotesk_500Medium',
@@ -477,6 +574,9 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 34,
     marginTop: 10,
+  },
+  signalPricePhone: {
+    fontSize: 30,
   },
   signalCaption: {
     color: colors.subtleText,
