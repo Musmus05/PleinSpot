@@ -1,4 +1,4 @@
-import { FuelFilter, FUEL_OPTIONS } from './fuels';
+import { FuelFilter } from './fuels';
 import { Station } from './carburantsApi';
 
 type FetchStationsOptions = {
@@ -13,12 +13,10 @@ type FetchStationsOptions = {
   };
 };
 
-type WebFuelData = {
+type BackendStationsResponse = {
   fetchedAt: string;
   stations: Station[];
 };
-
-let cachedData: WebFuelData | null = null;
 
 export async function fetchStationsInRegionWeb({
   forceRefresh = false,
@@ -26,95 +24,62 @@ export async function fetchStationsInRegionWeb({
   limit = 220,
   region,
 }: FetchStationsOptions) {
-  const data = await getFuelData(forceRefresh);
-  const visibleStations = data.stations.filter((station) => isStationVisible(station, region));
-  const filteredByFuel =
-    fuelFilter === 'all'
-      ? visibleStations
-      : visibleStations.filter((station) => station.prices[fuelFilter] != null);
-
-  return {
-    fetchedAt: data.fetchedAt,
-    stations: sortStationsByFuel(filteredByFuel, fuelFilter).slice(0, limit),
-  };
-}
-
-async function getFuelData(forceRefresh = false) {
-  if (!forceRefresh && cachedData) {
-    return cachedData;
-  }
-
-  const url = forceRefresh ? `/fuel-stations.json?t=${Date.now()}` : '/fuel-stations.json';
-  const response = await fetch(url, {
+  const searchParams = new URLSearchParams({
+    forceRefresh: forceRefresh ? '1' : '0',
+    fuelFilter,
+    latitude: String(region.latitude),
+    latitudeDelta: String(region.latitudeDelta),
+    limit: String(limit),
+    longitude: String(region.longitude),
+    longitudeDelta: String(region.longitudeDelta),
+  });
+  const response = await fetch(`${getApiBaseUrl()}/api/stations?${searchParams.toString()}`, {
     cache: 'no-store',
   });
 
   if (!response.ok) {
-    throw new Error("Le snapshot local des carburants est introuvable.");
+    let backendMessage = 'Le backend PleinSpot est indisponible.';
+
+    try {
+      const payload = (await response.json()) as { error?: string };
+
+      if (payload.error) {
+        backendMessage = payload.error;
+      }
+    } catch {
+      // Ignore JSON parsing failures and keep generic message.
+    }
+
+    throw new Error(backendMessage);
   }
 
-  cachedData = (await response.json()) as WebFuelData;
-  return cachedData;
+  return (await response.json()) as BackendStationsResponse;
 }
 
-function isStationVisible(
-  station: Station,
-  region: FetchStationsOptions['region'],
-) {
-  const latitudeDelta = Math.max(region.latitudeDelta, 0.03);
-  const longitudeDelta = Math.max(region.longitudeDelta, 0.03);
-  const south = region.latitude - latitudeDelta / 2;
-  const north = region.latitude + latitudeDelta / 2;
-  const west = region.longitude - longitudeDelta / 2;
-  const east = region.longitude + longitudeDelta / 2;
+function getApiBaseUrl() {
+  const configuredBaseUrl = getEnv('EXPO_PUBLIC_API_BASE_URL');
 
-  return (
-    station.coordinates.latitude >= south &&
-    station.coordinates.latitude <= north &&
-    station.coordinates.longitude >= west &&
-    station.coordinates.longitude <= east
-  );
-}
-
-function sortStationsByFuel(stations: Station[], fuelFilter: FuelFilter) {
-  return [...stations].sort((left, right) => {
-    const leftPrice = getComparablePrice(left, fuelFilter);
-    const rightPrice = getComparablePrice(right, fuelFilter);
-
-    if (leftPrice == null && rightPrice == null) {
-      return 0;
-    }
-
-    if (leftPrice == null) {
-      return 1;
-    }
-
-    if (rightPrice == null) {
-      return -1;
-    }
-
-    return leftPrice - rightPrice;
-  });
-}
-
-function getComparablePrice(station: Station, fuelFilter: FuelFilter) {
-  if (fuelFilter !== 'all') {
-    return station.prices[fuelFilter]?.value ?? null;
+  if (configuredBaseUrl) {
+    return configuredBaseUrl.replace(/\/$/, '');
   }
 
-  let cheapest: number | null = null;
-
-  for (const fuel of FUEL_OPTIONS) {
-    const value = station.prices[fuel.key]?.value;
-
-    if (value == null) {
-      continue;
+  if (typeof window !== 'undefined') {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'http://localhost:4000';
     }
 
-    if (cheapest == null || value < cheapest) {
-      cheapest = value;
-    }
+    return window.location.origin;
   }
 
-  return cheapest;
+  return 'http://localhost:4000';
+}
+
+function getEnv(name: string) {
+  const globalWithProcess = globalThis as typeof globalThis & {
+    process?: {
+      env?: Record<string, string | undefined>;
+    };
+  };
+
+  return globalWithProcess.process?.env?.[name]?.trim();
 }

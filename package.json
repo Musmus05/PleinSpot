@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "expo start --web",
-    "sync:data": "node ./scripts/sync-fuel-data.mjs",
-    "preweb": "npm run sync:data",
+    "start": "npm run dev",
+    "dev": "concurrently \"npm run backend\" \"npm run web\"",
+    "backend": "node ./backend/server.mjs",
     "web": "expo start --web"
   },
   "dependencies": {
@@ -30,6 +30,7 @@
   "devDependencies": {
     "@types/leaflet": "^1.9.21",
     "@types/react": "~19.2.2",
+    "concurrently": "^9.2.1",
     "typescript": "~5.9.2"
   },
   "private": true

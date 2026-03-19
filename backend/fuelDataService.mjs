@@ -1,12 +1,14 @@
-import { writeFile, mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
-
 import { unzipSync } from 'fflate';
 import { XMLParser } from 'fast-xml-parser';
 
 const API_URL = 'https://donnees.roulez-eco.fr/opendata/instantane';
-const OUTPUT_FILE = join(process.cwd(), 'public', 'fuel-stations.json');
+const CACHE_TTL_MS = 5 * 60 * 1000;
 const LAT_LON_SCALE = 100000;
+const FUEL_OPTIONS = ['gazole', 'sp95', 'e10', 'sp98', 'e85', 'gplc'];
+
+let cachedStations = null;
+let cacheFetchedAt = null;
+let inflightLoad = null;
 
 const parser = new XMLParser({
   allowBooleanAttributes: true,
@@ -14,40 +16,71 @@ const parser = new XMLParser({
   ignoreAttributes: false,
 });
 
-const response = await fetch(API_URL);
+export async function fetchStationsInRegion({
+  forceRefresh = false,
+  fuelFilter,
+  limit = 220,
+  region,
+}) {
+  const { fetchedAt, stations } = await getCachedStations(forceRefresh);
+  const visibleStations = stations.filter((station) => isStationVisible(station, region));
+  const filteredByFuel =
+    fuelFilter === 'all'
+      ? visibleStations
+      : visibleStations.filter((station) => station.prices[fuelFilter] != null);
 
-if (!response.ok) {
-  throw new Error(`Failed to download official fuel data: ${response.status} ${response.statusText}`);
+  return {
+    fetchedAt,
+    stations: sortStationsByFuel(filteredByFuel, fuelFilter).slice(0, limit),
+  };
 }
 
-const zipBytes = new Uint8Array(await response.arrayBuffer());
-const files = unzipSync(zipBytes);
-const firstFileName = Object.keys(files)[0];
+async function getCachedStations(forceRefresh = false) {
+  if (!forceRefresh && cachedStations && cacheFetchedAt && Date.now() - Date.parse(cacheFetchedAt) < CACHE_TTL_MS) {
+    return {
+      fetchedAt: cacheFetchedAt,
+      stations: cachedStations,
+    };
+  }
 
-if (!firstFileName) {
-  throw new Error('Official fuel archive is empty.');
+  if (!inflightLoad) {
+    inflightLoad = loadStationsFromZip().finally(() => {
+      inflightLoad = null;
+    });
+  }
+
+  const result = await inflightLoad;
+  cachedStations = result.stations;
+  cacheFetchedAt = result.fetchedAt;
+  return result;
 }
 
-const xml = decodeLatin1(files[firstFileName]);
-const parsed = parser.parse(xml);
-const rawStations = ensureArray(parsed?.pdv_liste?.pdv);
-const stations = rawStations.map(mapStation).filter(Boolean);
+async function loadStationsFromZip() {
+  const response = await fetch(API_URL, {
+    cache: 'no-store',
+  });
 
-await mkdir(join(process.cwd(), 'public'), { recursive: true });
-await writeFile(
-  OUTPUT_FILE,
-  JSON.stringify(
-    {
-      fetchedAt: new Date().toISOString(),
-      stations,
-    },
-    null,
-    2,
-  ),
-  'utf8',
-);
+  if (!response.ok) {
+    throw new Error(`Official fuel feed unavailable: ${response.status} ${response.statusText}`);
+  }
 
-console.log(`Synced ${stations.length} stations to ${OUTPUT_FILE}`);
+  const zipBytes = new Uint8Array(await response.arrayBuffer());
+  const files = unzipSync(zipBytes);
+  const firstFileName = Object.keys(files)[0];
+
+  if (!firstFileName) {
+    throw new Error('Official fuel archive is empty.');
+  }
+
+  const xml = decodeLatin1(files[firstFileName]);
+  const parsed = parser.parse(xml);
+  const rawStations = ensureArray(parsed?.pdv_liste?.pdv);
+
+  return {
+    fetchedAt: new Date().toISOString(),
+    stations: rawStations.map(mapStation).filter(Boolean),
+  };
+}
 
 function mapStation(raw) {
   const latitude = Number(raw.latitude) / LAT_LON_SCALE;
@@ -98,6 +131,65 @@ function mapStation(raw) {
     services: ensureArray(raw.services?.service).map((service) => normalizeText(service)).filter(Boolean),
     unavailableFuelLabels: rawRuptures.map((rupture) => normalizeText(rupture.nom)).filter(Boolean),
   };
+}
+
+function isStationVisible(station, region) {
+  const latitudeDelta = Math.max(region.latitudeDelta, 0.03);
+  const longitudeDelta = Math.max(region.longitudeDelta, 0.03);
+  const south = region.latitude - latitudeDelta / 2;
+  const north = region.latitude + latitudeDelta / 2;
+  const west = region.longitude - longitudeDelta / 2;
+  const east = region.longitude + longitudeDelta / 2;
+
+  return (
+    station.coordinates.latitude >= south &&
+    station.coordinates.latitude <= north &&
+    station.coordinates.longitude >= west &&
+    station.coordinates.longitude <= east
+  );
+}
+
+function sortStationsByFuel(stations, fuelFilter) {
+  return [...stations].sort((left, right) => {
+    const leftPrice = getComparablePrice(left, fuelFilter);
+    const rightPrice = getComparablePrice(right, fuelFilter);
+
+    if (leftPrice == null && rightPrice == null) {
+      return 0;
+    }
+
+    if (leftPrice == null) {
+      return 1;
+    }
+
+    if (rightPrice == null) {
+      return -1;
+    }
+
+    return leftPrice - rightPrice;
+  });
+}
+
+function getComparablePrice(station, fuelFilter) {
+  if (fuelFilter !== 'all') {
+    return station.prices[fuelFilter]?.value ?? null;
+  }
+
+  let cheapest = null;
+
+  for (const fuelKey of FUEL_OPTIONS) {
+    const value = station.prices[fuelKey]?.value;
+
+    if (value == null) {
+      continue;
+    }
+
+    if (cheapest == null || value < cheapest) {
+      cheapest = value;
+    }
+  }
+
+  return cheapest;
 }
 
 function mapFuelNameToKey(name) {

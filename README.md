@@ -1,43 +1,131 @@
 # PleinSpot
 
-Application web Expo / React pour visualiser les stations-service sur une carte et consulter les prix carburants remontés par le flux officiel français.
+PleinSpot est une application web de comparaison de prix des carburants avec un vrai backend Node.
 
-## Fonctionnalités
+Le frontend affiche la carte, la recherche, les filtres et les fiches station. Le backend récupère le flux officiel des prix des carburants, le met en cache, filtre les stations selon la zone demandée et permet une vraie synchronisation au clic sur le bouton refresh.
 
-- Carte web Leaflet avec stations visibles selon la zone affichée
-- Recherche de stations et de villes
-- Filtres par carburant: Gazole, SP95, E10, SP98, E85, GPLc
-- Marqueurs avec prix directement sur la carte
-- Fiche station détaillée: prix, horaires, services, distance, ouverture dans Google Maps
-- Rafraîchissement manuel et mise à jour automatique
+## Documentation Utilisateur
 
-## Source de données
+### Fonctions principales
 
-- API officielle du ministère de l'Économie:
-  [prix-des-carburants-en-france-flux-instantane-v2](https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/)
+- visualiser les stations visibles sur la carte
+- filtrer par carburant
+- rechercher une ville ou une station
+- ouvrir une fiche station détaillée
+- comparer les prix dans la zone affichée
+- lancer un itinéraire Google Maps
 
-Le projet utilise un snapshot web local généré dans `public/fuel-stations.json`.
+### Ce que fait le bouton refresh
 
-## Lancer le projet
+Le bouton refresh appelle maintenant le backend.
+
+Concrètement, il :
+
+- force un nouveau téléchargement du flux officiel
+- reconstruit les données côté serveur
+- recharge les stations visibles dans l'application
+- met à jour l'heure de dernière vérification dans l'interface
+
+### Mobile / responsive
+
+Sur petit écran :
+
+- le bloc du haut peut être replié avec `Filtres` et `Infos`
+- le bloc du bas peut être replié avec `Résultats`
+- la carte reste plus visible quand les panneaux sont fermés
+
+## Documentation Technique
+
+### Stack
+
+- Expo Web
+- React 19
+- React Native Web
+- Leaflet / React Leaflet
+- Node.js
+- fflate
+- fast-xml-parser
+
+### Architecture
+
+#### Frontend
+
+- [App.tsx](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/App.tsx)
+- [AppShell.tsx](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/src/AppShell.tsx)
+- [TopOverlay.tsx](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/src/components/TopOverlay.tsx)
+- [SummaryCard.tsx](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/src/components/SummaryCard.tsx)
+- [StationSheet.tsx](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/src/components/StationSheet.tsx)
+- [StationMap.web.tsx](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/src/components/StationMap.web.tsx)
+
+Le frontend parle au backend via :
+
+- [carburantsApiWeb.ts](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/src/lib/carburantsApiWeb.ts)
+
+#### Backend
+
+- [server.mjs](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/backend/server.mjs)
+- [fuelDataService.mjs](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/backend/fuelDataService.mjs)
+
+Responsabilités du backend :
+
+- exposer `GET /api/health`
+- exposer `GET /api/stations`
+- récupérer le flux officiel `https://donnees.roulez-eco.fr/opendata/instantane`
+- parser l'archive ZIP et le XML
+- mettre les stations en cache mémoire
+- forcer une resynchronisation quand `forceRefresh=1`
+
+### Scripts
+
+- `npm start` : lance frontend + backend
+- `npm run dev` : lance frontend + backend
+- `npm run backend` : lance uniquement le backend
+- `npm run web` : lance uniquement le frontend
+
+### Lancement local
+
+Installation :
 
 ```bash
 npm install
-npm run web
 ```
 
-Ou simplement:
+Lancement complet :
 
 ```bash
 npm start
 ```
 
-## Stack
+Le frontend tourne via Expo Web et le backend via Node sur `http://localhost:4000`.
 
-- Expo SDK 55
-- React
-- react-leaflet
-- leaflet
-- expo-location
-- react-native-web
-- react-native-svg
-- Space Grotesk
+Si besoin, le frontend peut viser une autre URL backend avec :
+
+```bash
+EXPO_PUBLIC_API_BASE_URL=http://localhost:4000
+```
+
+### Endpoint principal
+
+Le frontend utilise :
+
+```text
+GET /api/stations?latitude=...&longitude=...&latitudeDelta=...&longitudeDelta=...&fuelFilter=...&limit=...&forceRefresh=0|1
+```
+
+### Limites actuelles
+
+- le backend garde les données en cache mémoire, pas en base de données
+- un redémarrage du serveur vide le cache
+- pour une mise en production propre, il faudra héberger le frontend et le backend ensemble ou configurer l'URL API correctement
+
+### Publication
+
+Le projet n'est plus un site purement statique.
+
+Pour le publier, il faut :
+
+- héberger le frontend
+- héberger le backend
+- configurer l'URL backend côté frontend si nécessaire
+
+GitHub Pages seul ne suffit plus pour faire tourner l'application complète.

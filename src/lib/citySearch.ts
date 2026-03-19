@@ -7,13 +7,6 @@ export type CitySearchResult = {
   subtitle: string;
 };
 
-type NominatimResult = {
-  display_name: string;
-  lat: string;
-  lon: string;
-  name?: string;
-};
-
 const cityCache = new Map<string, CitySearchResult[]>();
 
 export async function searchCities(query: string) {
@@ -29,12 +22,8 @@ export async function searchCities(query: string) {
     return cached;
   }
 
-  const url = new URL('https://nominatim.openstreetmap.org/search');
+  const url = new URL(`${getApiBaseUrl()}/api/cities`);
   url.searchParams.set('q', query);
-  url.searchParams.set('format', 'jsonv2');
-  url.searchParams.set('limit', '5');
-  url.searchParams.set('addressdetails', '0');
-  url.searchParams.set('countrycodes', 'fr');
 
   try {
     const response = await fetch(url.toString(), {
@@ -47,10 +36,7 @@ export async function searchCities(query: string) {
       return [];
     }
 
-    const payload = (await response.json()) as NominatimResult[];
-    const results = payload
-      .map((entry, index) => mapCityResult(entry, index))
-      .filter((entry): entry is CitySearchResult => entry != null);
+    const results = (await response.json()) as CitySearchResult[];
 
     cityCache.set(normalizedQuery, results);
     return results;
@@ -59,35 +45,30 @@ export async function searchCities(query: string) {
   }
 }
 
-function mapCityResult(entry: NominatimResult, index: number): CitySearchResult | null {
-  const latitude = Number(entry.lat);
-  const longitude = Number(entry.lon);
+function getApiBaseUrl() {
+  const configuredBaseUrl = getEnv('EXPO_PUBLIC_API_BASE_URL');
 
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-    return null;
+  if (configuredBaseUrl) {
+    return configuredBaseUrl.replace(/\/$/, '');
   }
 
-  const label = entry.name?.trim() || entry.display_name.split(',')[0]?.trim();
-  const subtitle = entry.display_name
-    .split(',')
-    .slice(1, 3)
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .join(', ');
+  if (typeof window !== 'undefined') {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'http://localhost:4000';
+    }
 
-  if (!label) {
-    return null;
+    return window.location.origin;
   }
 
-  return {
-    id: `${label}-${latitude}-${longitude}-${index}`,
-    label,
-    region: {
-      latitude,
-      latitudeDelta: 0.18,
-      longitude,
-      longitudeDelta: 0.18,
-    },
-    subtitle,
+  return 'http://localhost:4000';
+}
+
+function getEnv(name: string) {
+  const globalWithProcess = globalThis as typeof globalThis & {
+    process?: {
+      env?: Record<string, string | undefined>;
+    };
   };
+
+  return globalWithProcess.process?.env?.[name]?.trim();
 }
