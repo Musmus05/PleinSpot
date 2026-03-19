@@ -1,8 +1,9 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
-import { Clock3, LocateFixed, MapPinned, RefreshCcw, Search, Sparkles } from 'lucide-react-native';
+import { Clock3, LocateFixed, MapPinned, RefreshCcw, Search, Settings2 } from 'lucide-react-native';
+import { useState } from 'react';
 
 import { Station } from '../lib/carburantsApi';
+import { AppLanguage, copy } from '../lib/copy';
 import { formatPrice, formatTimestamp } from '../lib/format';
 import { FuelFilter, FUEL_FILTER_OPTIONS } from '../lib/fuels';
 import { DisplayPrice } from '../lib/stationDisplay';
@@ -11,27 +12,31 @@ import { BrandMark } from './BrandMark';
 
 type TopOverlayProps = {
   activeFuel: FuelFilter;
+  getStationDisplayPrice: (station: Station) => DisplayPrice | null;
   isRefreshing: boolean;
+  language: AppLanguage;
   lastSyncAt: string | null;
-  onChangeFuel: (fuel: FuelFilter) => void;
-  onChangeSearch: (value: string) => void;
   onCenterUser: () => void;
+  onChangeFuel: (fuel: FuelFilter) => void;
+  onChangeLanguage: (language: AppLanguage) => void;
+  onChangeSearch: (value: string) => void;
   onFocusStation: (station: Station) => void;
   onRefresh: () => void;
   priceRange: { max: number | null; min: number | null };
   searchResults: Station[];
   searchText: string;
   stationsCount: number;
-  getStationDisplayPrice: (station: Station) => DisplayPrice | null;
 };
 
 export function TopOverlay({
   activeFuel,
   getStationDisplayPrice,
   isRefreshing,
+  language,
   lastSyncAt,
   onCenterUser,
   onChangeFuel,
+  onChangeLanguage,
   onChangeSearch,
   onFocusStation,
   onRefresh,
@@ -41,163 +46,153 @@ export function TopOverlay({
   stationsCount,
 }: TopOverlayProps) {
   const { width } = useWindowDimensions();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const isDesktop = width >= 1080;
+  const t = copy[language];
   const activeFuelLabel = FUEL_FILTER_OPTIONS.find((option) => option.key === activeFuel)?.label ?? 'Tout voir';
 
   return (
     <View style={styles.topPanel}>
       <View style={[styles.heroCard, shadows.floating]}>
-        <LinearGradient
-          colors={['rgba(130, 216, 255, 0.14)', 'rgba(255, 184, 108, 0.06)', 'rgba(8, 22, 32, 0)']}
-          end={{ x: 1, y: 1 }}
-          pointerEvents="none"
-          start={{ x: 0, y: 0 }}
-          style={styles.heroGlow}
-        />
-
-        <View style={[styles.heroHeader, isDesktop && styles.heroHeaderDesktop]}>
+        <View style={[styles.navRow, isDesktop && styles.navRowDesktop]}>
           <View style={styles.brandRow}>
-            <BrandMark size={60} />
-            <View style={styles.brandCopy}>
-              <View style={styles.liveRow}>
-                <View style={styles.liveBadge}>
-                  <Sparkles color={colors.sun} size={12} />
-                  <Text style={styles.liveBadgeText}>LIVE</Text>
-                </View>
-                <Text style={styles.liveHint}>Radar prix carburants</Text>
-              </View>
-              <Text style={styles.brandTitle}>PleinSpot</Text>
-              <Text style={styles.brandSubtitle}>
-                Compare les prix a vue, repere le meilleur plein et ouvre directement un itineraire.
-              </Text>
+            <BrandMark size={38} />
+            <View style={styles.brandMeta}>
+              <Text style={styles.brandName}>PleinSpot</Text>
+              <Text style={styles.brandHint}>{t.topOverlay.brandHint}</Text>
             </View>
           </View>
 
-          <View style={styles.heroActions}>
-            <Pressable onPress={onCenterUser} style={styles.iconButton}>
-              <LocateFixed color={colors.text} size={18} />
+          <View style={[styles.searchShell, isDesktop && styles.searchShellDesktop]}>
+            <Search color={colors.subtleText} size={16} />
+            <TextInput
+              onChangeText={onChangeSearch}
+              placeholder={t.topOverlay.searchPlaceholder}
+              placeholderTextColor={colors.subtleText}
+              selectionColor={colors.sun}
+              style={styles.searchInput}
+              value={searchText}
+            />
+          </View>
+
+          <View style={styles.navActions}>
+            <Pressable onPress={() => setIsSettingsOpen((value) => !value)} style={styles.iconButton}>
+              <Settings2 color={colors.subtleTextStrong} size={16} />
             </Pressable>
             <Pressable onPress={onRefresh} style={styles.iconButton}>
               {isRefreshing ? (
-                <ActivityIndicator color={colors.text} size="small" />
+                <ActivityIndicator color={colors.subtleTextStrong} size="small" />
               ) : (
-                <RefreshCcw color={colors.text} size={18} />
+                <RefreshCcw color={colors.subtleTextStrong} size={16} />
               )}
+            </Pressable>
+            <Pressable onPress={onCenterUser} style={styles.iconButton}>
+              <LocateFixed color={colors.subtleTextStrong} size={16} />
             </Pressable>
           </View>
         </View>
 
-        <View style={[styles.utilityRow, isDesktop && styles.utilityRowDesktop]}>
-          <View style={styles.searchColumn}>
-            <View style={styles.searchShell}>
-              <Search color={colors.subtleText} size={18} />
-              <TextInput
-                onChangeText={onChangeSearch}
-                placeholder="Rechercher dans la zone affichee"
-                placeholderTextColor={colors.subtleText}
-                selectionColor={colors.sun}
-                style={styles.searchInput}
-                value={searchText}
-              />
+        {isSettingsOpen ? (
+          <View style={[styles.settingsCard, shadows.card]}>
+            <Text style={styles.settingsTitle}>{t.settings.title}</Text>
+            <Text style={styles.settingsLabel}>{t.settings.language}</Text>
+            <View style={styles.languageRow}>
+              <Pressable
+                onPress={() => onChangeLanguage('fr')}
+                style={[styles.languageChip, language === 'fr' && styles.languageChipActive]}
+              >
+                <Text style={[styles.languageChipText, language === 'fr' && styles.languageChipTextActive]}>
+                  {t.settings.french}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => onChangeLanguage('en')}
+                style={[styles.languageChip, language === 'en' && styles.languageChipActive]}
+              >
+                <Text style={[styles.languageChipText, language === 'en' && styles.languageChipTextActive]}>
+                  {t.settings.english}
+                </Text>
+              </Pressable>
             </View>
+            <Text style={styles.settingsHint}>{t.settings.comingSoon}</Text>
+          </View>
+        ) : null}
 
-            {searchText.length > 0 && (
-              <View style={[styles.searchResults, shadows.card]}>
-                {searchResults.length > 0 ? (
-                  searchResults.map((station, index) => {
-                    const displayPrice = getStationDisplayPrice(station);
+        {searchText.length > 0 ? (
+          <View style={[styles.searchResults, shadows.card]}>
+            {searchResults.length > 0 ? (
+              searchResults.map((station, index) => {
+                const displayPrice = getStationDisplayPrice(station);
 
-                    return (
-                      <Pressable
-                        key={station.id}
-                        onPress={() => onFocusStation(station)}
-                        style={[
-                          styles.searchResultRow,
-                          index === searchResults.length - 1 && styles.searchResultRowLast,
-                        ]}
-                      >
-                        <View style={styles.searchResultCopy}>
-                          <Text style={styles.searchResultTitle}>
-                            {station.city} {station.postcode}
-                          </Text>
-                          <Text style={styles.searchResultSubtitle}>{station.address}</Text>
-                        </View>
-                        <View style={styles.searchResultPriceWrap}>
-                          <Text style={styles.searchResultPrice}>
-                            {displayPrice ? formatPrice(displayPrice.value) : 'Indispo'}
-                          </Text>
-                        </View>
-                      </Pressable>
-                    );
-                  })
-                ) : (
-                  <View style={styles.emptySearchState}>
-                    <Text style={styles.emptySearchText}>Aucune station trouvee dans la zone affichee.</Text>
-                  </View>
-                )}
-              </View>
+                return (
+                  <Pressable
+                    key={station.id}
+                    onPress={() => onFocusStation(station)}
+                    style={[styles.searchResultRow, index === searchResults.length - 1 && styles.searchResultLast]}
+                  >
+                    <View style={styles.searchResultCopy}>
+                      <Text style={styles.searchResultTitle}>
+                        {station.city} {station.postcode}
+                      </Text>
+                      <Text style={styles.searchResultSubtitle}>{station.address}</Text>
+                    </View>
+                    <Text style={styles.searchResultPrice}>
+                      {displayPrice ? formatPrice(displayPrice.value) : 'Indispo'}
+                    </Text>
+                  </Pressable>
+                );
+              })
+            ) : (
+              <Text style={styles.emptySearchText}>{t.topOverlay.noStation}</Text>
             )}
           </View>
+        ) : null}
 
-          <LinearGradient
-            colors={['rgba(255, 184, 108, 0.24)', 'rgba(130, 216, 255, 0.10)']}
-            end={{ x: 1, y: 1 }}
-            start={{ x: 0, y: 0 }}
-            style={[styles.signalCard, isDesktop && styles.signalCardDesktop]}
-          >
-            <Text style={styles.signalEyebrow}>Meilleur prix repere</Text>
-            <Text style={styles.signalPrice}>
-              {priceRange.min != null ? formatPrice(priceRange.min) : '--'}
-            </Text>
-            <Text style={styles.signalCaption}>{activeFuelLabel} dans la zone visible</Text>
-          </LinearGradient>
-        </View>
+        <View style={[styles.heroBody, isDesktop && styles.heroBodyDesktop]}>
+          <View style={styles.heroMain}>
+            <ScrollView contentContainerStyle={styles.filterRow} horizontal showsHorizontalScrollIndicator={false}>
+              {FUEL_FILTER_OPTIONS.map((option) => {
+                const isActive = option.key === activeFuel;
 
-        <ScrollView contentContainerStyle={styles.filterRow} horizontal showsHorizontalScrollIndicator={false}>
-          {FUEL_FILTER_OPTIONS.map((option) => {
-            const isActive = option.key === activeFuel;
+                return (
+                  <Pressable
+                    key={option.key}
+                    onPress={() => onChangeFuel(option.key)}
+                    style={[styles.filterChip, isActive && { backgroundColor: option.accent, borderColor: option.accent }]}
+                  >
+                    <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>{option.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
 
-            return (
-              <Pressable key={option.key} onPress={() => onChangeFuel(option.key)} style={styles.filterChipWrap}>
-                <LinearGradient
-                  colors={
-                    isActive
-                      ? [option.accent, `${option.accent}CC`]
-                      : [colors.surfaceSoft, 'rgba(255, 255, 255, 0.02)']
-                  }
-                  end={{ x: 1, y: 1 }}
-                  start={{ x: 0, y: 0 }}
-                  style={[
-                    styles.filterChip,
-                    isActive && { borderColor: option.accent },
-                  ]}
-                >
-                  <Text style={[styles.filterChipText, isActive && { color: colors.textOnLight }]}>
-                    {option.label}
+            <View style={styles.heroStats}>
+              <View style={styles.statCard}>
+                <MapPinned color={colors.aqua} size={15} />
+                <View>
+                  <Text style={styles.statLabel}>{t.topOverlay.stations}</Text>
+                  <Text style={styles.statValue}>
+                    {stationsCount} {t.topOverlay.visible}
                   </Text>
-                </LinearGradient>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+                </View>
+              </View>
 
-        <View style={styles.heroStats}>
-          <View style={styles.statPill}>
-            <MapPinned color={colors.aqua} size={16} />
-            <View>
-              <Text style={styles.statLabel}>Stations</Text>
-              <Text style={styles.statValue}>{stationsCount} visibles</Text>
+              <View style={styles.statCard}>
+                <Clock3 color={colors.sun} size={15} />
+                <View>
+                  <Text style={styles.statLabel}>{t.topOverlay.sync}</Text>
+                  <Text style={styles.statValue}>
+                    {lastSyncAt ? formatTimestamp(lastSyncAt) : t.topOverlay.syncing}
+                  </Text>
+                </View>
+              </View>
             </View>
           </View>
 
-          <View style={styles.statPill}>
-            <Clock3 color={colors.sun} size={16} />
-            <View>
-              <Text style={styles.statLabel}>Sync</Text>
-              <Text style={styles.statValue}>
-                {lastSyncAt ? formatTimestamp(lastSyncAt) : 'Synchronisation'}
-              </Text>
-            </View>
+          <View style={styles.signalCard}>
+            <Text style={styles.signalLabel}>{t.topOverlay.bestPrice}</Text>
+            <Text style={styles.signalPrice}>{priceRange.min != null ? formatPrice(priceRange.min) : '--'}</Text>
+            <Text style={styles.signalCaption}>{activeFuelLabel} dans la zone visible</Text>
           </View>
         </View>
       </View>
@@ -208,155 +203,136 @@ export function TopOverlay({
 const styles = StyleSheet.create({
   topPanel: {
     alignSelf: 'center',
-    maxWidth: 1380,
+    maxWidth: 1220,
     paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingTop: 14,
     width: '100%',
   },
   heroCard: {
     backgroundColor: colors.panel,
     borderColor: colors.border,
-    borderRadius: 32,
+    borderRadius: 26,
     borderWidth: 1,
-    overflow: 'hidden',
-    padding: 20,
+    padding: 16,
   },
-  heroGlow: {
-    ...StyleSheet.absoluteFillObject,
+  navRow: {
+    gap: 14,
   },
-  heroHeader: {
-    gap: 16,
-    marginBottom: 18,
-  },
-  heroHeaderDesktop: {
-    alignItems: 'flex-start',
+  navRowDesktop: {
+    alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
   },
   brandRow: {
-    flexDirection: 'row',
-    gap: 14,
-  },
-  brandCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  liveRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 10,
   },
-  liveBadge: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 184, 108, 0.10)',
-    borderColor: 'rgba(255, 184, 108, 0.28)',
-    borderRadius: 999,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+  brandMeta: {
+    gap: 2,
   },
-  liveBadgeText: {
-    color: colors.sun,
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 11,
-    letterSpacing: 0.8,
-  },
-  liveHint: {
-    color: colors.subtleTextStrong,
-    fontFamily: 'SpaceGrotesk_500Medium',
-    fontSize: 12,
-  },
-  brandTitle: {
+  brandName: {
     color: colors.text,
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 28,
+    fontSize: 22,
   },
-  brandSubtitle: {
+  brandHint: {
     color: colors.subtleText,
-    fontFamily: 'SpaceGrotesk_400Regular',
-    fontSize: 14,
-    lineHeight: 20,
-    maxWidth: 560,
-  },
-  heroActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  iconButton: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderColor: colors.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    height: 46,
-    justifyContent: 'center',
-    width: 46,
-  },
-  utilityRow: {
-    gap: 14,
-  },
-  utilityRowDesktop: {
-    alignItems: 'stretch',
-    flexDirection: 'row',
-  },
-  searchColumn: {
-    flex: 1,
-    zIndex: 2,
+    fontFamily: 'SpaceGrotesk_500Medium',
+    fontSize: 12,
+    textTransform: 'uppercase',
   },
   searchShell: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderColor: colors.borderStrong,
-    borderRadius: 20,
+    backgroundColor: colors.surfaceSoft,
+    borderColor: colors.border,
+    borderRadius: 16,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 12,
-    minHeight: 56,
-    paddingHorizontal: 16,
+    gap: 10,
+    minHeight: 46,
+    paddingHorizontal: 14,
+  },
+  searchShellDesktop: {
+    flex: 1,
   },
   searchInput: {
     color: colors.text,
     flex: 1,
     fontFamily: 'SpaceGrotesk_500Medium',
-    fontSize: 15,
+    fontSize: 14,
     padding: 0,
   },
-  signalCard: {
+  navActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  iconButton: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceSoft,
     borderColor: colors.border,
-    borderRadius: 24,
+    borderRadius: 14,
     borderWidth: 1,
-    minHeight: 116,
-    padding: 18,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
   },
-  signalCardDesktop: {
-    maxWidth: 260,
-    width: 260,
+  settingsCard: {
+    alignSelf: 'flex-end',
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginTop: 12,
+    padding: 14,
+    width: 220,
   },
-  signalEyebrow: {
+  settingsTitle: {
+    color: colors.text,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 15,
+  },
+  settingsLabel: {
+    color: colors.subtleText,
+    fontFamily: 'SpaceGrotesk_500Medium',
+    fontSize: 12,
+    marginTop: 10,
+  },
+  languageRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  languageChip: {
+    backgroundColor: colors.surfaceSoft,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  languageChipActive: {
+    backgroundColor: colors.sun,
+    borderColor: colors.sun,
+  },
+  languageChipText: {
     color: colors.subtleTextStrong,
     fontFamily: 'SpaceGrotesk_500Medium',
     fontSize: 12,
   },
-  signalPrice: {
-    color: colors.text,
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 30,
-    marginTop: 8,
+  languageChipTextActive: {
+    color: colors.textOnLight,
   },
-  signalCaption: {
+  settingsHint: {
     color: colors.subtleText,
     fontFamily: 'SpaceGrotesk_400Regular',
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 8,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 12,
   },
   searchResults: {
-    backgroundColor: colors.panelRaised,
-    borderColor: colors.borderStrong,
-    borderRadius: 24,
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 18,
     borderWidth: 1,
     marginTop: 12,
     overflow: 'hidden',
@@ -366,12 +342,11 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     borderBottomWidth: 1,
     flexDirection: 'row',
-    gap: 12,
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  searchResultRowLast: {
+  searchResultLast: {
     borderBottomWidth: 0,
   },
   searchResultCopy: {
@@ -386,61 +361,64 @@ const styles = StyleSheet.create({
   searchResultSubtitle: {
     color: colors.subtleText,
     fontFamily: 'SpaceGrotesk_400Regular',
-    fontSize: 13,
-  },
-  searchResultPriceWrap: {
-    backgroundColor: 'rgba(255, 184, 108, 0.10)',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    fontSize: 12,
   },
   searchResultPrice: {
     color: colors.sun,
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 13,
   },
-  emptySearchState: {
-    padding: 18,
-  },
   emptySearchText: {
     color: colors.subtleText,
     fontFamily: 'SpaceGrotesk_400Regular',
-    fontSize: 14,
+    fontSize: 13,
+    padding: 14,
+  },
+  heroBody: {
+    gap: 16,
+    marginTop: 14,
+  },
+  heroBodyDesktop: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+  },
+  heroMain: {
+    flex: 1,
   },
   filterRow: {
     gap: 10,
-    paddingTop: 16,
-  },
-  filterChipWrap: {
-    borderRadius: 999,
   },
   filterChip: {
+    backgroundColor: colors.surfaceSoft,
     borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: 16,
-    paddingVertical: 11,
+    paddingVertical: 10,
   },
   filterChipText: {
-    color: colors.text,
+    color: colors.subtleTextStrong,
     fontFamily: 'SpaceGrotesk_500Medium',
     fontSize: 13,
+  },
+  filterChipTextActive: {
+    color: colors.textOnLight,
   },
   heroStats: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginTop: 18,
+    marginTop: 16,
   },
-  statPill: {
+  statCard: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.surfaceSoft,
     borderColor: colors.border,
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 10,
-    minWidth: 180,
+    minWidth: 174,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
@@ -454,5 +432,32 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 13,
     marginTop: 2,
+  },
+  signalCard: {
+    backgroundColor: '#F5E7C6',
+    borderColor: colors.border,
+    borderRadius: 22,
+    borderWidth: 1,
+    minHeight: 126,
+    padding: 18,
+    width: 250,
+  },
+  signalLabel: {
+    color: colors.subtleTextStrong,
+    fontFamily: 'SpaceGrotesk_500Medium',
+    fontSize: 12,
+  },
+  signalPrice: {
+    color: colors.text,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 34,
+    marginTop: 10,
+  },
+  signalCaption: {
+    color: colors.subtleText,
+    fontFamily: 'SpaceGrotesk_400Regular',
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 10,
   },
 });

@@ -1,445 +1,644 @@
-import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { Clock3, MapPin, Navigation, ShieldCheck, X } from 'lucide-react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
+import { Clock3, Coffee, MapPin, Navigation, ShieldCheck, ShoppingBag, Sparkles, Waves, X } from 'lucide-react-native';
 
 import { Station } from '../lib/carburantsApi';
+import { AppLanguage, copy } from '../lib/copy';
 import { formatDistanceLabel, formatPrice, formatTimestamp, getDistanceInKm } from '../lib/format';
 import { FuelFilter, FUEL_OPTIONS } from '../lib/fuels';
+import { getStationBrand } from '../lib/stationBrand';
+import { fetchStationOfficialDetails, StationOfficialDetails } from '../lib/stationOfficialDetails';
 import { getDisplayPrice } from '../lib/stationDisplay';
 import { colors, shadows } from '../theme';
 
 type StationSheetProps = {
   activeFuel: FuelFilter;
+  language: AppLanguage;
   onClose: () => void;
   onOpenDirections: () => void;
   station: Station;
   userLocation: { latitude: number; longitude: number } | null;
+  visibleStations: Station[];
 };
+
+type DynamicCardData = {
+  delta: number | null;
+  fuel: (typeof FUEL_OPTIONS)[number];
+  priceValue: number;
+  sampleCount: number;
+  series: number[];
+};
+
+const quickServiceIcons = [ShoppingBag, Waves, Sparkles, Coffee];
+const MAX_GRAPH_POINTS = 10;
 
 export function StationSheet({
   activeFuel,
+  language,
   onClose,
   onOpenDirections,
   station,
   userLocation,
+  visibleStations,
 }: StationSheetProps) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1080;
+  const isCompact = width < 720;
+  const isNarrow = width < 480;
   const spotlightPrice = getDisplayPrice(station, activeFuel);
-  const spotlightFuelLabel = spotlightPrice
-    ? FUEL_OPTIONS.find((fuel) => fuel.key === spotlightPrice.fuelKey)?.label ?? spotlightPrice.fuelKey.toUpperCase()
-    : 'Pas de prix pour ce filtre';
-  const distance = userLocation
-    ? formatDistanceLabel(getDistanceInKm(userLocation, station.coordinates))
-    : null;
+  const distance = userLocation ? formatDistanceLabel(getDistanceInKm(userLocation, station.coordinates)) : null;
+  const t = copy[language];
+  const [officialDetails, setOfficialDetails] = useState<StationOfficialDetails | null>(null);
+  const brand = officialDetails?.brand ?? getStationBrand(station);
+  const stationName = officialDetails?.name;
+  const cardWidth = isDesktop ? 376 : Math.min(width - 32, 440);
+  const dynamicCards = getDynamicCardData(station, visibleStations).slice(0, 2);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    setOfficialDetails(null);
+
+    fetchStationOfficialDetails(station.id).then((details) => {
+      if (isMounted) {
+        setOfficialDetails(details);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [station.id]);
 
   return (
-    <View style={[styles.stationSheet, shadows.floating, isDesktop && styles.stationSheetDesktop]}>
-      <LinearGradient
-        colors={['rgba(255, 184, 108, 0.12)', 'rgba(130, 216, 255, 0.10)', 'rgba(8, 22, 32, 0)']}
-        end={{ x: 1, y: 1 }}
-        pointerEvents="none"
-        start={{ x: 0, y: 0 }}
-        style={styles.sheetGlow}
-      />
+    <View style={[styles.sheet, shadows.floating, { width: cardWidth }, isDesktop && styles.sheetDesktop]}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {!isDesktop ? <View style={styles.handle} /> : null}
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.sheetHandle} />
-
-        <View style={styles.sheetHeader}>
-          <View style={styles.sheetHeaderText}>
-            <Text style={styles.sheetTitle}>
-              {station.city} {station.postcode}
-            </Text>
-            <Text style={styles.sheetSubtitle}>{station.address}</Text>
-          </View>
-
-          <View style={styles.sheetActions}>
-            <Pressable onPress={onClose} style={styles.closeButton}>
-              <X color={colors.text} size={18} />
-            </Pressable>
-            <Pressable onPress={onOpenDirections} style={styles.navigateButton}>
-              <Navigation color={colors.textOnLight} size={18} />
-              <Text style={styles.navigateButtonText}>Y aller</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        <Pressable onPress={onClose} style={styles.closeHint}>
-          <Text style={styles.closeHintText}>Fermer la fiche</Text>
-        </Pressable>
-
-        <LinearGradient
-          colors={['rgba(255, 255, 255, 0.07)', 'rgba(255, 255, 255, 0.03)']}
-          end={{ x: 1, y: 1 }}
-          start={{ x: 0, y: 0 }}
-          style={styles.spotlightCard}
-        >
-          <View style={styles.spotlightHeader}>
-            <Text style={styles.spotlightEyebrow}>Prix mis en avant</Text>
-            <View style={styles.metaRow}>
-              <View style={styles.metaPill}>
-                <MapPin color={colors.subtleTextStrong} size={14} />
-                <Text style={styles.metaPillText}>{station.department}</Text>
-              </View>
-              {station.automate24h ? (
-                <View style={[styles.metaPill, styles.metaPillAccent]}>
-                  <ShieldCheck color={colors.mint} size={14} />
-                  <Text style={[styles.metaPillText, styles.metaPillAccentText]}>24/24</Text>
-                </View>
-              ) : null}
+        <View style={styles.topRow}>
+          <View style={styles.topMeta}>
+            <View style={styles.openBadge}>
+              <Text style={styles.openBadgeText}>{t.stationSheet.open}</Text>
             </View>
-          </View>
-
-          <View style={styles.spotlightBody}>
-            <Text style={styles.spotlightPrice}>
-              {spotlightPrice ? formatPrice(spotlightPrice.value) : 'Indispo'}
-            </Text>
-            <Text style={styles.spotlightCaption}>{spotlightFuelLabel}</Text>
-          </View>
-
-          <View style={styles.quickFacts}>
-            <View style={styles.quickFactCard}>
-              <Clock3 color={colors.sun} size={16} />
-              <View>
-                <Text style={styles.quickFactLabel}>Derniere maj</Text>
-                <Text style={styles.quickFactValue}>
-                  {spotlightPrice?.updatedAt ? formatTimestamp(spotlightPrice.updatedAt) : 'Inconnue'}
-                </Text>
-              </View>
-            </View>
-
-            {distance ? (
-              <View style={styles.quickFactCard}>
-                <Navigation color={colors.aqua} size={16} />
-                <View>
-                  <Text style={styles.quickFactLabel}>Distance</Text>
-                  <Text style={styles.quickFactValue}>{distance}</Text>
-                </View>
+            {brand ? (
+              <View style={styles.brandBadge}>
+                <Text style={styles.brandBadgeText}>{brand}</Text>
               </View>
             ) : null}
           </View>
-        </LinearGradient>
+          <Pressable onPress={onClose} style={styles.iconButton}>
+            <X color={colors.subtleTextStrong} size={18} />
+          </Pressable>
+        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tous les carburants</Text>
-          <View style={styles.priceGrid}>
-            {FUEL_OPTIONS.map((fuel) => {
-              const price = station.prices[fuel.key];
-              const highlight =
-                (activeFuel !== 'all' && activeFuel === fuel.key) ||
-                (activeFuel === 'all' && getDisplayPrice(station, activeFuel)?.fuelKey === fuel.key);
+        <Text style={styles.title}>
+          {station.city} {station.postcode}
+        </Text>
+        {stationName ? <Text style={styles.stationName}>{stationName}</Text> : null}
+        <Text style={styles.subtitle}>{station.address}</Text>
 
-              return (
-                <View
-                  key={fuel.key}
-                  style={[
-                    styles.priceCard,
-                    highlight && {
-                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                      borderColor: fuel.accent,
-                    },
-                  ]}
-                >
-                  <View style={styles.priceLabelRow}>
-                    <Text style={styles.priceFuelLabel}>{fuel.label}</Text>
-                    {highlight ? <View style={[styles.priceDot, { backgroundColor: fuel.accent }]} /> : null}
-                  </View>
-                  <Text style={styles.priceValue}>{price ? formatPrice(price.value) : 'Indispo'}</Text>
-                  <Text style={styles.priceMeta}>
-                    {price?.updatedAt ? `Maj ${formatTimestamp(price.updatedAt)}` : 'Aucune remontee'}
-                  </Text>
-                </View>
-              );
-            })}
+        <Pressable onPress={onOpenDirections} style={styles.navigateButton}>
+          <Navigation color={colors.textOnLight} size={18} />
+          <Text style={styles.navigateText}>{t.stationSheet.navigate}</Text>
+        </Pressable>
+
+        <View style={styles.metaStrip}>
+          <View style={styles.metaPill}>
+            <MapPin color={colors.subtleTextStrong} size={13} />
+            <Text style={styles.metaText}>{station.department}</Text>
           </View>
+          {station.automate24h ? (
+            <View style={[styles.metaPill, styles.metaPillMint]}>
+              <ShieldCheck color={colors.mint} size={13} />
+              <Text style={[styles.metaText, styles.metaMintText]}>24/24</Text>
+            </View>
+          ) : null}
+          {distance ? (
+            <View style={styles.metaPill}>
+              <Navigation color={colors.aqua} size={13} />
+              <Text style={styles.metaText}>{distance}</Text>
+            </View>
+          ) : null}
         </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Services</Text>
-          <View style={styles.tagCloud}>
-            {station.services.length > 0 ? (
-              station.services.map((service) => (
-                <View key={service} style={styles.serviceTag}>
-                  <Text style={styles.serviceTagText}>{service}</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>{t.stationSheet.dynamics}</Text>
+          <Text style={styles.sectionMeta}>{t.stationSheet.lastThirtyDays}</Text>
+        </View>
+
+        <View style={styles.dynamicsList}>
+          {dynamicCards.map((card) => (
+            <View
+              key={card.fuel.key}
+              style={[styles.dynamicCard, isCompact && styles.dynamicCardCompact]}
+            >
+              <View style={styles.dynamicCopy}>
+                <View style={styles.dynamicLabelRow}>
+                  <Text style={styles.dynamicLabel}>{card.fuel.label}</Text>
+                  <Text style={styles.dynamicSamples}>{card.sampleCount} stations</Text>
                 </View>
-              ))
-            ) : (
-              <Text style={styles.sectionHint}>Aucun service renseigne.</Text>
-            )}
+                <View style={styles.dynamicValueRow}>
+                  <Text style={styles.dynamicValue}>{formatPrice(card.priceValue)}</Text>
+                  {card.delta != null ? (
+                    <Text style={[styles.dynamicDelta, card.delta >= 0 ? styles.dynamicDeltaUp : styles.dynamicDeltaDown]}>
+                      {formatDelta(card.delta)}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+
+              <MiniMarketChart
+                accent={card.fuel.accent}
+                compact={isCompact}
+                focusValue={card.priceValue}
+                series={card.series}
+              />
+            </View>
+          ))}
+
+          {dynamicCards.length === 0 ? (
+            <View style={styles.dynamicCard}>
+              <Text style={styles.dynamicLabel}>{t.stationSheet.noPrice}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>{t.stationSheet.onSiteServices}</Text>
+        </View>
+
+        <View style={styles.servicesGrid}>
+          {station.services.slice(0, 4).map((service, index) => {
+            const Icon = quickServiceIcons[index % quickServiceIcons.length];
+
+            return (
+              <View key={service} style={[styles.serviceCard, isNarrow && styles.serviceCardCompact]}>
+                <View style={styles.serviceIconWrap}>
+                  <Icon color={colors.subtleTextStrong} size={16} />
+                </View>
+                <Text numberOfLines={2} style={styles.serviceName}>
+                  {service}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>{t.stationSheet.allFuels}</Text>
+        </View>
+
+        <View style={styles.fuelGrid}>
+          {FUEL_OPTIONS.map((fuel) => {
+            const price = station.prices[fuel.key];
+            const highlight =
+              (activeFuel !== 'all' && activeFuel === fuel.key) ||
+              (activeFuel === 'all' && getDisplayPrice(station, activeFuel)?.fuelKey === fuel.key);
+
+            return (
+              <View
+                key={fuel.key}
+                style={[
+                  styles.fuelCard,
+                  isNarrow && styles.fuelCardCompact,
+                  highlight && { backgroundColor: '#FFF7EA', borderColor: fuel.accent },
+                ]}
+              >
+                <View style={styles.fuelRow}>
+                  <Text style={styles.fuelLabel}>{fuel.label}</Text>
+                  <View style={[styles.fuelDot, { backgroundColor: fuel.accent }]} />
+                </View>
+                <Text style={styles.fuelValue}>{price ? formatPrice(price.value) : 'Indispo'}</Text>
+                <Text style={styles.fuelMeta}>
+                  {price?.updatedAt ? formatTimestamp(price.updatedAt) : t.stationSheet.noUpdate}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={styles.bottomMeta}>
+          <View style={styles.infoRow}>
+            <Clock3 color={colors.sun} size={16} />
+            <View>
+              <Text style={styles.infoLabel}>{t.stationSheet.lastUpdate}</Text>
+              <Text style={styles.infoValue}>
+                {spotlightPrice?.updatedAt ? formatTimestamp(spotlightPrice.updatedAt) : t.stationSheet.noUpdate}
+              </Text>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Horaires</Text>
-          <Text style={styles.sectionBody}>{station.schedule || 'Horaires non renseignes.'}</Text>
-        </View>
-
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Region</Text>
-          <Text style={styles.sectionBody}>{station.region}</Text>
+          <View style={styles.infoBlock}>
+            <Text style={styles.sectionTitle}>{t.stationSheet.openingHours}</Text>
+            <Text style={styles.infoSchedule}>{station.schedule || t.stationSheet.noSchedule}</Text>
+          </View>
         </View>
       </ScrollView>
     </View>
   );
 }
 
+function MiniMarketChart({
+  accent,
+  compact,
+  focusValue,
+  series,
+}: {
+  accent: string;
+  compact: boolean;
+  focusValue: number;
+  series: number[];
+}) {
+  const width = compact ? 124 : 108;
+  const height = compact ? 56 : 48;
+  const chartSeries = series.length === 1 ? [series[0], series[0]] : series;
+  const chartWidth = width - 8;
+  const chartHeight = height - 12;
+  const min = Math.min(...chartSeries);
+  const max = Math.max(...chartSeries);
+  const valueRange = max - min || 1;
+  const points = chartSeries.map((entry, index) => {
+    const x = 4 + (chartWidth * index) / Math.max(chartSeries.length - 1, 1);
+    const y = 6 + chartHeight - ((entry - min) / valueRange) * chartHeight;
+
+    return { x, y, value: entry };
+  });
+  const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+  const areaPath = `${linePath} L ${points[points.length - 1].x} ${height - 6} L ${points[0].x} ${height - 6} Z`;
+  const focusPoint = points.reduce((closest, point) =>
+    Math.abs(point.value - focusValue) < Math.abs(closest.value - focusValue) ? point : closest,
+  );
+
+  return (
+    <Svg height={height} viewBox={`0 0 ${width} ${height}`} width={width}>
+      <Path d={areaPath} fill={accent} opacity={0.12} />
+      <Path d={linePath} fill="none" stroke={accent} strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} />
+      <Circle cx={focusPoint.x} cy={focusPoint.y} fill={colors.white} r={5} stroke={accent} strokeWidth={2.5} />
+    </Svg>
+  );
+}
+
+function getDynamicCardData(station: Station, visibleStations: Station[]): DynamicCardData[] {
+  return FUEL_OPTIONS.filter((fuel) => station.prices[fuel.key]).map((fuel) => {
+    const priceValue = station.prices[fuel.key]?.value ?? 0;
+    const marketSeries = visibleStations
+      .map((candidate) => candidate.prices[fuel.key]?.value)
+      .filter((value): value is number => value != null)
+      .sort((left, right) => left - right);
+    const averagePrice =
+      marketSeries.length > 0
+        ? marketSeries.reduce((total, value) => total + value, 0) / marketSeries.length
+        : null;
+
+    return {
+      delta: averagePrice == null ? null : Number((averagePrice - priceValue).toFixed(2)),
+      fuel,
+      priceValue,
+      sampleCount: marketSeries.length,
+      series: pickSeriesPoints(marketSeries, priceValue),
+    };
+  });
+}
+
+function pickSeriesPoints(values: number[], priceValue: number) {
+  if (values.length === 0) {
+    return [priceValue];
+  }
+
+  if (values.length <= MAX_GRAPH_POINTS) {
+    return values;
+  }
+
+  return Array.from({ length: MAX_GRAPH_POINTS }, (_, index) => {
+    const sourceIndex = Math.round((index * (values.length - 1)) / (MAX_GRAPH_POINTS - 1));
+    return values[sourceIndex];
+  });
+}
+
+function formatDelta(value: number) {
+  const prefix = value >= 0 ? '+' : '';
+  return `${prefix}${value.toFixed(2).replace('.', ',')}`;
+}
+
 const styles = StyleSheet.create({
-  stationSheet: {
-    backgroundColor: colors.panel,
+  sheet: {
+    backgroundColor: colors.panelRaised,
     borderColor: colors.border,
-    borderRadius: 32,
+    borderRadius: 28,
     borderWidth: 1,
-    maxHeight: '68%',
-    maxWidth: 720,
-    overflow: 'hidden',
-    paddingBottom: 8,
+    maxHeight: '100%',
     paddingHorizontal: 18,
-    paddingTop: 12,
-    width: '100%',
+    paddingTop: 18,
   },
-  stationSheetDesktop: {
-    width: 640,
+  sheetDesktop: {
+    alignSelf: 'flex-end',
   },
-  sheetGlow: {
-    ...StyleSheet.absoluteFillObject,
+  scrollContent: {
+    paddingBottom: 20,
   },
-  sheetHandle: {
+  handle: {
     alignSelf: 'center',
     backgroundColor: colors.borderStrong,
     borderRadius: 999,
     height: 5,
-    marginBottom: 18,
+    marginBottom: 16,
     width: 72,
   },
-  sheetHeader: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: 14,
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  sheetHeaderText: {
-    flex: 1,
-  },
-  sheetActions: {
+  topRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 10,
+    justifyContent: 'space-between',
   },
-  sheetTitle: {
+  topMeta: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  openBadge: {
+    backgroundColor: '#75D96E',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  openBadgeText: {
+    color: '#11401C',
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 10,
+  },
+  brandBadge: {
+    backgroundColor: '#FFF4DD',
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  brandBadgeText: {
     color: colors.text,
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 24,
+    fontSize: 10,
   },
-  sheetSubtitle: {
-    color: colors.subtleText,
+  iconButton: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceSoft,
+    borderColor: colors.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  title: {
+    color: colors.text,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 22,
+    marginTop: 14,
+  },
+  subtitle: {
+    color: colors.subtleTextStrong,
     fontFamily: 'SpaceGrotesk_400Regular',
     fontSize: 14,
     lineHeight: 20,
     marginTop: 6,
   },
-  closeButton: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderColor: colors.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    height: 44,
-    justifyContent: 'center',
-    width: 44,
+  stationName: {
+    color: colors.sun,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 12,
+    letterSpacing: 0.4,
+    marginTop: 8,
+    textTransform: 'uppercase',
   },
   navigateButton: {
     alignItems: 'center',
-    backgroundColor: colors.sun,
+    backgroundColor: '#D7A400',
     borderRadius: 18,
     flexDirection: 'row',
     gap: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
+    justifyContent: 'center',
+    marginTop: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
   },
-  navigateButtonText: {
+  navigateText: {
     color: colors.textOnLight,
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 13,
+    fontSize: 14,
   },
-  closeHint: {
-    alignSelf: 'flex-start',
-    marginBottom: 16,
-  },
-  closeHintText: {
-    color: colors.subtleTextStrong,
-    fontFamily: 'SpaceGrotesk_500Medium',
-    fontSize: 12,
-  },
-  spotlightCard: {
-    borderColor: colors.border,
-    borderRadius: 26,
-    borderWidth: 1,
-    marginBottom: 18,
-    overflow: 'hidden',
-    padding: 18,
-  },
-  spotlightHeader: {
-    gap: 14,
-  },
-  spotlightEyebrow: {
-    color: colors.subtleTextStrong,
-    fontFamily: 'SpaceGrotesk_500Medium',
-    fontSize: 12,
-  },
-  metaRow: {
+  metaStrip: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
+    marginTop: 14,
   },
   metaPill: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 999,
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  metaPillAccent: {
-    backgroundColor: 'rgba(122, 216, 180, 0.12)',
-  },
-  metaPillText: {
-    color: colors.subtleTextStrong,
-    fontFamily: 'SpaceGrotesk_500Medium',
-    fontSize: 12,
-  },
-  metaPillAccentText: {
-    color: colors.mint,
-  },
-  spotlightBody: {
-    marginTop: 18,
-  },
-  spotlightPrice: {
-    color: colors.text,
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 32,
-  },
-  spotlightCaption: {
-    color: colors.sun,
-    fontFamily: 'SpaceGrotesk_500Medium',
-    fontSize: 13,
-    marginTop: 6,
-  },
-  quickFacts: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 18,
-  },
-  quickFactCard: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.surfaceSoft,
     borderColor: colors.border,
-    borderRadius: 18,
+    borderRadius: 999,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 10,
-    minWidth: 180,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
   },
-  quickFactLabel: {
-    color: colors.subtleText,
+  metaPillMint: {
+    backgroundColor: '#EBFAF2',
+  },
+  metaText: {
+    color: colors.subtleTextStrong,
     fontFamily: 'SpaceGrotesk_500Medium',
     fontSize: 11,
   },
-  quickFactValue: {
-    color: colors.text,
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 13,
-    marginTop: 2,
+  metaMintText: {
+    color: colors.mint,
   },
-  section: {
-    marginBottom: 18,
-  },
-  sectionCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderColor: colors.border,
-    borderRadius: 24,
-    borderWidth: 1,
-    marginTop: 18,
-    padding: 18,
+  sectionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    marginTop: 24,
   },
   sectionTitle: {
     color: colors.text,
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 16,
-    marginBottom: 12,
   },
-  sectionBody: {
+  sectionMeta: {
     color: colors.subtleText,
-    fontFamily: 'SpaceGrotesk_400Regular',
-    fontSize: 14,
-    lineHeight: 21,
+    fontFamily: 'SpaceGrotesk_500Medium',
+    fontSize: 10,
+    letterSpacing: 0.6,
   },
-  sectionHint: {
-    color: colors.subtleText,
-    fontFamily: 'SpaceGrotesk_400Regular',
-    fontSize: 13,
-  },
-  priceGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  dynamicsList: {
     gap: 12,
   },
-  priceCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderColor: colors.border,
+  dynamicCard: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: colors.borderStrong,
     borderRadius: 22,
     borderWidth: 1,
-    minWidth: '47%',
-    padding: 15,
+    flexDirection: 'row',
+    gap: 14,
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
-  priceLabelRow: {
+  dynamicCardCompact: {
+    alignItems: 'flex-start',
+    flexDirection: 'column',
+  },
+  dynamicCopy: {
+    flex: 1,
+  },
+  dynamicLabelRow: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  priceFuelLabel: {
+  dynamicLabel: {
     color: colors.subtleTextStrong,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 10,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  dynamicSamples: {
+    color: colors.subtleText,
+    fontFamily: 'SpaceGrotesk_500Medium',
+    fontSize: 10,
+  },
+  dynamicValueRow: {
+    alignItems: 'baseline',
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  dynamicValue: {
+    color: colors.text,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 18,
+  },
+  dynamicDelta: {
+    fontFamily: 'SpaceGrotesk_500Medium',
+    fontSize: 11,
+  },
+  dynamicDeltaUp: {
+    color: colors.mint,
+  },
+  dynamicDeltaDown: {
+    color: colors.coral,
+  },
+  servicesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  serviceCard: {
+    alignItems: 'center',
+    flexBasis: '22%',
+    flexGrow: 1,
+  },
+  serviceCardCompact: {
+    flexBasis: '46%',
+  },
+  serviceIconWrap: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  serviceName: {
+    color: colors.subtleTextStrong,
+    fontFamily: 'SpaceGrotesk_500Medium',
+    fontSize: 10,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  fuelGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  fuelCard: {
+    backgroundColor: colors.surfaceSoft,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexBasis: '47%',
+    flexGrow: 1,
+    padding: 14,
+  },
+  fuelCardCompact: {
+    flexBasis: '100%',
+  },
+  fuelRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  fuelLabel: {
+    color: colors.subtleText,
     fontFamily: 'SpaceGrotesk_500Medium',
     fontSize: 12,
   },
-  priceDot: {
+  fuelDot: {
     borderRadius: 999,
     height: 10,
     width: 10,
   },
-  priceValue: {
+  fuelValue: {
     color: colors.text,
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 22,
+    fontSize: 20,
     marginTop: 10,
   },
-  priceMeta: {
+  fuelMeta: {
     color: colors.subtleText,
     fontFamily: 'SpaceGrotesk_400Regular',
     fontSize: 11,
     marginTop: 8,
   },
-  tagCloud: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  serviceTag: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  bottomMeta: {
+    backgroundColor: colors.surfaceSoft,
     borderColor: colors.border,
-    borderRadius: 999,
+    borderRadius: 22,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    marginTop: 18,
+    padding: 16,
   },
-  serviceTagText: {
+  infoRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  infoLabel: {
+    color: colors.subtleText,
+    fontFamily: 'SpaceGrotesk_500Medium',
+    fontSize: 11,
+  },
+  infoValue: {
     color: colors.text,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  infoBlock: {
+    marginTop: 18,
+  },
+  infoSchedule: {
+    color: colors.subtleText,
     fontFamily: 'SpaceGrotesk_400Regular',
-    fontSize: 12,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 8,
   },
 });

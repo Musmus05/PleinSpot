@@ -1,7 +1,7 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { Station } from '../lib/carburantsApi';
+import { AppLanguage, copy } from '../lib/copy';
 import { formatDistanceLabel, formatPrice, getDistanceInKm } from '../lib/format';
 import { FUEL_META } from '../lib/fuels';
 import { DisplayPrice } from '../lib/stationDisplay';
@@ -10,6 +10,7 @@ import { colors, shadows } from '../theme';
 type SummaryCardProps = {
   getStationDisplayPrice: (station: Station) => DisplayPrice | null;
   isLoading: boolean;
+  language: AppLanguage;
   onFocusStation: (station: Station) => void;
   stations: Station[];
   userLocation: { latitude: number; longitude: number } | null;
@@ -18,93 +19,65 @@ type SummaryCardProps = {
 export function SummaryCard({
   getStationDisplayPrice,
   isLoading,
+  language,
   onFocusStation,
   stations,
   userLocation,
 }: SummaryCardProps) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1080;
+  const t = copy[language];
 
   return (
-    <View style={[styles.summaryCard, shadows.floating, isDesktop && styles.summaryCardDesktop]}>
-      <LinearGradient
-        colors={['rgba(130, 216, 255, 0.12)', 'rgba(255, 184, 108, 0.06)', 'rgba(8, 22, 32, 0)']}
-        end={{ x: 1, y: 1 }}
-        pointerEvents="none"
-        start={{ x: 0, y: 0 }}
-        style={styles.summaryGlow}
-      />
-
-      <View style={styles.summaryHeader}>
-        <View style={styles.summaryHeaderCopy}>
-          <View style={styles.summaryBadge}>
-            <Text style={styles.summaryBadgeText}>Top 3</Text>
-          </View>
-          <Text style={styles.summaryTitle}>Les meilleurs prix autour de toi</Text>
-          <Text style={styles.summarySubtitle}>
-            Deplace la carte ou change le carburant pour recalculer les stations les plus competitives.
-          </Text>
+    <View style={[styles.card, shadows.floating, isDesktop && styles.cardDesktop]}>
+      <View style={styles.header}>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{t.summary.top3}</Text>
         </View>
         {isLoading ? <ActivityIndicator color={colors.sun} /> : null}
       </View>
 
+      <Text style={styles.title}>{t.summary.title}</Text>
+      <Text style={styles.subtitle}>{t.summary.subtitle}</Text>
+
       {stations.length > 0 ? (
         <ScrollView
-          contentContainerStyle={[styles.summaryRail, isDesktop && styles.summaryRailDesktop]}
+          contentContainerStyle={[styles.rail, isDesktop && styles.railDesktop]}
           horizontal
           showsHorizontalScrollIndicator={false}
         >
           {stations.map((station, index) => {
             const price = getStationDisplayPrice(station);
-            const distance = userLocation
-              ? formatDistanceLabel(getDistanceInKm(userLocation, station.coordinates))
-              : null;
+            const distance = userLocation ? formatDistanceLabel(getDistanceInKm(userLocation, station.coordinates)) : null;
 
             return (
-              <Pressable
-                key={station.id}
-                onPress={() => onFocusStation(station)}
-                style={styles.summaryStationCard}
-              >
-                <LinearGradient
-                  colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
-                  end={{ x: 1, y: 1 }}
-                  start={{ x: 0, y: 0 }}
-                  style={styles.summaryStationInner}
-                >
-                  <View style={styles.summaryStationTop}>
-                    <View style={styles.summaryRankBadge}>
-                      <Text style={styles.summaryRankText}>{index + 1}</Text>
-                    </View>
-                    {distance ? <Text style={styles.summaryStationDistance}>{distance}</Text> : null}
+              <Pressable key={station.id} onPress={() => onFocusStation(station)} style={styles.stationCard}>
+                <View style={styles.stationTop}>
+                  <View style={styles.rankBubble}>
+                    <Text style={styles.rankText}>{index + 1}</Text>
                   </View>
+                  {distance ? <Text style={styles.distance}>{distance}</Text> : null}
+                </View>
 
-                  <Text style={styles.summaryStationPrice}>
-                    {price ? formatPrice(price.value) : 'Indispo'}
-                  </Text>
-                  <Text style={styles.summaryStationFuel}>
-                    {price ? FUEL_META[price.fuelKey].label : 'Non disponible'}
-                  </Text>
+                <Text style={styles.price}>{price ? formatPrice(price.value) : 'Indispo'}</Text>
+                <Text style={styles.fuel}>{price ? FUEL_META[price.fuelKey].label : 'Non disponible'}</Text>
 
-                  <View style={styles.summarySeparator} />
+                <View style={styles.separator} />
 
-                  <Text style={styles.summaryStationCity}>
-                    {station.city} {station.postcode}
-                  </Text>
-                  <Text numberOfLines={2} style={styles.summaryStationAddress}>
-                    {station.address}
-                  </Text>
-                </LinearGradient>
+                <Text style={styles.city}>
+                  {station.city} {station.postcode}
+                </Text>
+                <Text numberOfLines={2} style={styles.address}>
+                  {station.address}
+                </Text>
               </Pressable>
             );
           })}
         </ScrollView>
       ) : (
-        <View style={styles.emptySummary}>
-          <Text style={styles.emptySummaryTitle}>Aucune station exploitable</Text>
-          <Text style={styles.emptySummaryBody}>
-            Eloigne un peu le zoom ou deplace la carte vers une zone plus dense.
-          </Text>
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>{t.summary.emptyTitle}</Text>
+          <Text style={styles.emptyBody}>{t.summary.emptyBody}</Text>
         </View>
       )}
     </View>
@@ -112,147 +85,132 @@ export function SummaryCard({
 }
 
 const styles = StyleSheet.create({
-  summaryCard: {
+  card: {
     backgroundColor: colors.panel,
     borderColor: colors.border,
-    borderRadius: 32,
+    borderRadius: 28,
     borderWidth: 1,
-    maxWidth: 920,
-    overflow: 'hidden',
-    padding: 20,
+    maxWidth: 900,
+    padding: 18,
     width: '100%',
   },
-  summaryCardDesktop: {
-    width: 880,
+  cardDesktop: {
+    width: 820,
   },
-  summaryGlow: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  summaryHeader: {
-    alignItems: 'flex-start',
+  header: {
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 18,
   },
-  summaryHeaderCopy: {
-    flex: 1,
-    gap: 6,
-    paddingRight: 12,
-  },
-  summaryBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(130, 216, 255, 0.12)',
-    borderColor: 'rgba(130, 216, 255, 0.28)',
+  badge: {
+    backgroundColor: colors.surfaceSoft,
+    borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
   },
-  summaryBadgeText: {
-    color: colors.aqua,
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 11,
-    letterSpacing: 0.6,
-  },
-  summaryTitle: {
-    color: colors.text,
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 22,
-  },
-  summarySubtitle: {
+  badgeText: {
     color: colors.subtleText,
-    fontFamily: 'SpaceGrotesk_400Regular',
-    fontSize: 13,
-    lineHeight: 19,
-    maxWidth: 420,
-  },
-  summaryRail: {
-    flexGrow: 1,
-    gap: 14,
-    paddingRight: 2,
-  },
-  summaryRailDesktop: {
-    justifyContent: 'center',
-  },
-  summaryStationCard: {
-    width: 248,
-  },
-  summaryStationInner: {
-    borderColor: colors.border,
-    borderRadius: 26,
-    borderWidth: 1,
-    minHeight: 226,
-    overflow: 'hidden',
-    padding: 18,
-  },
-  summaryStationTop: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  summaryRankBadge: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 184, 108, 0.12)',
-    borderColor: 'rgba(255, 184, 108, 0.24)',
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 30,
-    justifyContent: 'center',
-    width: 30,
-  },
-  summaryRankText: {
-    color: colors.sun,
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 13,
+    fontSize: 10,
+    letterSpacing: 0.7,
   },
-  summaryStationDistance: {
-    color: colors.mint,
-    fontFamily: 'SpaceGrotesk_500Medium',
-    fontSize: 12,
-  },
-  summaryStationPrice: {
+  title: {
     color: colors.text,
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 30,
-    marginTop: 18,
+    fontSize: 18,
+    marginTop: 14,
   },
-  summaryStationFuel: {
-    color: colors.sun,
-    fontFamily: 'SpaceGrotesk_500Medium',
-    fontSize: 13,
-    marginTop: 6,
-  },
-  summarySeparator: {
-    backgroundColor: colors.border,
-    height: 1,
-    marginVertical: 16,
-    width: '100%',
-  },
-  summaryStationCity: {
-    color: colors.text,
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 16,
-  },
-  summaryStationAddress: {
+  subtitle: {
     color: colors.subtleText,
     fontFamily: 'SpaceGrotesk_400Regular',
     fontSize: 13,
     lineHeight: 19,
     marginTop: 8,
+    maxWidth: 420,
   },
-  emptySummary: {
-    backgroundColor: colors.surface,
+  rail: {
+    gap: 14,
+    paddingTop: 18,
+  },
+  railDesktop: {
+    justifyContent: 'center',
+  },
+  stationCard: {
+    backgroundColor: colors.surfaceRaised,
     borderColor: colors.border,
-    borderRadius: 24,
+    borderRadius: 22,
     borderWidth: 1,
     padding: 18,
+    width: 238,
   },
-  emptySummaryTitle: {
+  stationTop: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  rankBubble: {
+    alignItems: 'center',
+    backgroundColor: '#FFF0CC',
+    borderRadius: 999,
+    height: 30,
+    justifyContent: 'center',
+    width: 30,
+  },
+  rankText: {
+    color: colors.textOnLight,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 13,
+  },
+  distance: {
+    color: colors.mint,
+    fontFamily: 'SpaceGrotesk_500Medium',
+    fontSize: 12,
+  },
+  price: {
+    color: colors.text,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 28,
+    marginTop: 18,
+  },
+  fuel: {
+    color: colors.sun,
+    fontFamily: 'SpaceGrotesk_500Medium',
+    fontSize: 13,
+    marginTop: 5,
+  },
+  separator: {
+    backgroundColor: colors.border,
+    height: 1,
+    marginVertical: 16,
+  },
+  city: {
     color: colors.text,
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 15,
   },
-  emptySummaryBody: {
+  address: {
+    color: colors.subtleText,
+    fontFamily: 'SpaceGrotesk_400Regular',
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 8,
+  },
+  emptyState: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginTop: 18,
+    padding: 18,
+  },
+  emptyTitle: {
+    color: colors.text,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 15,
+  },
+  emptyBody: {
     color: colors.subtleText,
     fontFamily: 'SpaceGrotesk_400Regular',
     fontSize: 13,

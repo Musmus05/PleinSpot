@@ -45,7 +45,7 @@ function MapController({
       {
         animate: true,
         duration: 0.35,
-        padding: [88, 88],
+        padding: [72, 72],
       },
     );
   }, [map, viewportToken]);
@@ -90,12 +90,12 @@ export function StationMap({
           <>
             <CircleMarker
               center={[userLocation.latitude, userLocation.longitude]}
-              pathOptions={{ color: colors.aqua, fillColor: colors.aqua, fillOpacity: 0.14, weight: 2 }}
+              pathOptions={{ color: colors.aqua, fillColor: colors.aqua, fillOpacity: 0.12, weight: 2 }}
               radius={16}
             />
             <CircleMarker
               center={[userLocation.latitude, userLocation.longitude]}
-              pathOptions={{ color: colors.text, fillColor: colors.aqua, fillOpacity: 0.95, weight: 3 }}
+              pathOptions={{ color: colors.white, fillColor: colors.aqua, fillOpacity: 1, weight: 3 }}
               radius={6}
             />
           </>
@@ -103,7 +103,6 @@ export function StationMap({
 
         {stations.map((station) => {
           const marker = getMarkerPresentation(station);
-          const isSelected = selectedStationId === station.id;
 
           return (
             <Marker
@@ -111,7 +110,7 @@ export function StationMap({
               icon={createMarkerIcon({
                 fuelLabel: marker.fuelLabel,
                 priceLabel: marker.priceLabel,
-                selected: isSelected,
+                selected: selectedStationId === station.id,
                 tone: marker.tone,
               })}
               key={station.id}
@@ -135,28 +134,25 @@ function createMarkerIcon({
   selected: boolean;
   tone: string;
 }) {
-  const background = selected ? tone : 'rgba(248, 251, 255, 0.94)';
-  const border = selected ? tone : 'rgba(7, 19, 29, 0.08)';
-  const text = colors.textOnLight;
-  const subtext = selected ? 'rgba(7, 19, 29, 0.78)' : '#5C7287';
-  const glow = selected ? `0 20px 40px ${tone}44` : '0 16px 28px rgba(7, 19, 29, 0.18)';
+  const background = selected ? '#FFF3D8' : 'rgba(255,255,255,0.96)';
+  const border = selected ? tone : 'rgba(110, 86, 45, 0.12)';
+  const glow = selected ? '0 16px 32px rgba(255,191,71,0.26)' : '0 12px 24px rgba(184,169,143,0.20)';
 
   return L.divIcon({
     className: '',
     html: `
-      <div style="display:flex;flex-direction:column;align-items:center;transform:${selected ? 'translateY(-2px) scale(1.06)' : 'scale(1)'};transition:transform 120ms ease;">
-        <div style="display:flex;align-items:center;gap:10px;min-width:88px;padding:10px 12px;border-radius:20px;border:1px solid ${border};background:${background};box-shadow:${glow};backdrop-filter:blur(12px);">
+      <div style="display:flex;flex-direction:column;align-items:center;transform:${selected ? 'scale(1.04)' : 'scale(1)'};">
+        <div style="display:flex;align-items:center;gap:10px;min-width:92px;padding:10px 12px;border-radius:18px;border:1px solid ${border};background:${background};box-shadow:${glow};">
           <div style="width:10px;height:10px;border-radius:999px;background:${tone};flex-shrink:0;"></div>
-          <div style="display:flex;flex-direction:column;align-items:flex-start;">
-            <div style="font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:${text};line-height:1;">${priceLabel}</div>
-            <div style="font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:500;color:${subtext};margin-top:4px;line-height:1;">${fuelLabel}</div>
+          <div style="display:flex;flex-direction:column;">
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:#2E261F;line-height:1;">${priceLabel}</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:500;color:#857A6D;margin-top:4px;line-height:1;">${fuelLabel}</div>
           </div>
         </div>
-        <div style="width:14px;height:14px;border-radius:999px;border:3px solid rgba(255,255,255,0.88);background:${tone};margin-top:7px;box-shadow:0 8px 18px rgba(7,19,29,0.18);"></div>
       </div>
     `,
-    iconAnchor: [50, 60],
-    iconSize: [100, 60],
+    iconAnchor: [46, 24],
+    iconSize: [92, 40],
   });
 }
 

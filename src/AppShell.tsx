@@ -17,6 +17,7 @@ import { StationSheet } from './components/StationSheet';
 import { SummaryCard } from './components/SummaryCard';
 import { TopOverlay } from './components/TopOverlay';
 import { fetchStationsInRegion, Station } from './lib/carburantsApi';
+import { AppLanguage, copy } from './lib/copy';
 import { formatMarkerPrice } from './lib/format';
 import { FUEL_META, FuelFilter } from './lib/fuels';
 import { getDisplayPrice, getPriceRange, getSearchResults, getSortedStations } from './lib/stationDisplay';
@@ -49,6 +50,7 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
   const [stations, setStations] = useState<Station[]>([]);
   const [selectedStationId, setSelectedStationId] = useState<number | null>(null);
   const [activeFuel, setActiveFuel] = useState<FuelFilter>('all');
+  const [language, setLanguage] = useState<AppLanguage>('fr');
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -66,6 +68,7 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
   const topStations = getSortedStations(stations, activeFuel).slice(0, 3);
   const searchResults = getSearchResults(stations, deferredSearch, activeFuel);
   const isDesktop = width >= 1080;
+  const t = copy[language];
 
   const loadStations = useEffectEvent(async (nextRegion: MapRegion, fuelFilter: FuelFilter, mode: RefreshMode) => {
     const currentRequestId = requestIdRef.current + 1;
@@ -195,8 +198,8 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
         <SafeAreaView style={styles.loadingScreen}>
           <LinearGradient colors={[colors.ink, colors.midnight, colors.night]} style={StyleSheet.absoluteFill} />
           <BrandMark size={88} />
-          <Text style={styles.loadingTitle}>PleinSpot</Text>
-          <Text style={styles.loadingSubtitle}>Chargement de la carte carburants</Text>
+          <Text style={styles.loadingTitle}>{t.app.loadingTitle}</Text>
+          <Text style={styles.loadingSubtitle}>{t.app.loadingSubtitle}</Text>
           <ActivityIndicator color={colors.sun} style={styles.loadingSpinner} />
         </SafeAreaView>
       </SafeAreaProvider>
@@ -206,7 +209,7 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <View style={styles.container}>
           <StationMapComponent
             getMarkerPresentation={(station) => {
@@ -230,26 +233,26 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
           />
 
           <LinearGradient
-            colors={['rgba(7, 19, 29, 0.84)', 'rgba(7, 19, 29, 0.34)', 'rgba(7, 19, 29, 0)']}
+            colors={['rgba(243, 239, 232, 0.94)', 'rgba(243, 239, 232, 0.52)', 'rgba(243, 239, 232, 0)']}
             pointerEvents="none"
             style={styles.topShade}
           />
           <LinearGradient
-            colors={['rgba(7, 19, 29, 0)', 'rgba(7, 19, 29, 0.48)', 'rgba(7, 19, 29, 0.86)']}
+            colors={['rgba(243, 239, 232, 0)', 'rgba(243, 239, 232, 0.36)', 'rgba(243, 239, 232, 0.94)']}
             pointerEvents="none"
             style={styles.bottomShade}
           />
-          <View pointerEvents="none" style={styles.topGlow} />
-          <View pointerEvents="none" style={styles.bottomGlow} />
 
           <View pointerEvents="box-none" style={styles.overlay}>
             <TopOverlay
               activeFuel={activeFuel}
               getStationDisplayPrice={(station) => getDisplayPrice(station, activeFuel)}
               isRefreshing={isRefreshing || isBackgroundRefreshing}
+              language={language}
               lastSyncAt={lastSyncAt}
               onCenterUser={centerOnLocation}
               onChangeFuel={setActiveFuel}
+              onChangeLanguage={setLanguage}
               onChangeSearch={setSearchText}
               onFocusStation={focusStation}
               onRefresh={() => loadStations(region, activeFuel, 'manual')}
@@ -259,10 +262,24 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
               stationsCount={stations.length}
             />
 
+            {selectedStation && isDesktop ? (
+              <View pointerEvents="box-none" style={styles.desktopSheetRail}>
+                <StationSheet
+                  activeFuel={activeFuel}
+                  language={language}
+                  onClose={() => setSelectedStationId(null)}
+                  onOpenDirections={() => openDirections(selectedStation)}
+                  station={selectedStation}
+                  userLocation={userLocation}
+                  visibleStations={stations}
+                />
+              </View>
+            ) : null}
+
             <View pointerEvents="box-none" style={[styles.bottomPanel, isDesktop && styles.bottomPanelDesktop]}>
               {errorMessage ? (
                 <View style={styles.alertCard}>
-                  <Text style={styles.alertTitle}>Reseau indisponible</Text>
+                  <Text style={styles.alertTitle}>{t.app.networkTitle}</Text>
                   <Text style={styles.alertBody}>{errorMessage}</Text>
                 </View>
               ) : null}
@@ -271,26 +288,29 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
                 pointerEvents="box-none"
                 style={[
                   styles.bottomPanelContent,
-                  selectedStation ? styles.bottomPanelContentStart : styles.bottomPanelContentCenter,
+                  selectedStation && !isDesktop ? styles.bottomPanelContentStart : styles.bottomPanelContentCenter,
                 ]}
               >
-                {selectedStation ? (
+                {selectedStation && !isDesktop ? (
                   <StationSheet
                     activeFuel={activeFuel}
+                    language={language}
                     onClose={() => setSelectedStationId(null)}
                     onOpenDirections={() => openDirections(selectedStation)}
                     station={selectedStation}
                     userLocation={userLocation}
+                    visibleStations={stations}
                   />
-                ) : (
+                ) : !selectedStation ? (
                   <SummaryCard
                     getStationDisplayPrice={(station) => getDisplayPrice(station, activeFuel)}
                     isLoading={isLoading}
+                    language={language}
                     onFocusStation={focusStation}
                     stations={topStations}
                     userLocation={userLocation}
                   />
-                )}
+                ) : null}
               </View>
             </View>
           </View>
@@ -324,11 +344,11 @@ function getMarkerTone(price: number | null, min: number | null, max: number | n
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: colors.ink,
+    backgroundColor: colors.background,
     flex: 1,
   },
   container: {
-    backgroundColor: colors.ink,
+    backgroundColor: colors.background,
     flex: 1,
   },
   overlay: {
@@ -337,32 +357,21 @@ const styles = StyleSheet.create({
   },
   topShade: {
     ...StyleSheet.absoluteFillObject,
-    height: 240,
+    height: 220,
   },
   bottomShade: {
     bottom: 0,
-    height: 360,
+    height: 280,
     left: 0,
     position: 'absolute',
     right: 0,
   },
-  topGlow: {
-    backgroundColor: colors.glowAqua,
-    borderRadius: 240,
-    height: 240,
-    left: -80,
+  desktopSheetRail: {
+    bottom: 24,
     position: 'absolute',
-    top: -70,
-    width: 240,
-  },
-  bottomGlow: {
-    backgroundColor: colors.glowSun,
-    borderRadius: 260,
-    bottom: -120,
-    height: 260,
-    position: 'absolute',
-    right: -70,
-    width: 260,
+    right: 20,
+    top: 200,
+    width: 376,
   },
   bottomPanel: {
     alignItems: 'flex-start',
@@ -386,7 +395,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   alertCard: {
-    backgroundColor: 'rgba(127, 29, 29, 0.88)',
+    backgroundColor: '#FFF3F0',
     borderColor: colors.coral,
     borderRadius: 22,
     borderWidth: 1,
@@ -400,14 +409,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   alertBody: {
-    color: '#FCE7E7',
+    color: colors.subtleTextStrong,
     fontFamily: 'SpaceGrotesk_400Regular',
     fontSize: 13,
     marginTop: 6,
   },
   loadingScreen: {
     alignItems: 'center',
-    backgroundColor: colors.ink,
+    backgroundColor: colors.background,
     flex: 1,
     justifyContent: 'center',
   },
