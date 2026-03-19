@@ -17,9 +17,11 @@ import { StationSheet } from './components/StationSheet';
 import { SummaryCard } from './components/SummaryCard';
 import { TopOverlay } from './components/TopOverlay';
 import { fetchStationsInRegion, Station } from './lib/carburantsApi';
+import { CitySearchResult, searchCities } from './lib/citySearch';
 import { AppLanguage, copy } from './lib/copy';
 import { formatMarkerPrice } from './lib/format';
 import { FUEL_META, FuelFilter } from './lib/fuels';
+import { SearchResultItem } from './lib/searchTypes';
 import { getDisplayPrice, getPriceRange, getSearchResults, getSortedStations } from './lib/stationDisplay';
 import { colors } from './theme';
 import { MapRegion } from './types/map';
@@ -57,6 +59,7 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
   const [isBackgroundRefreshing, setIsBackgroundRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [viewportToken, setViewportToken] = useState(0);
   const hasLoadedOnceRef = useRef(false);
@@ -66,7 +69,6 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
   const selectedStation = stations.find((station) => station.id === selectedStationId) ?? null;
   const priceRange = getPriceRange(stations, activeFuel);
   const topStations = getSortedStations(stations, activeFuel).slice(0, 3);
-  const searchResults = getSearchResults(stations, deferredSearch, activeFuel);
   const isDesktop = width >= 1080;
   const t = copy[language];
 
@@ -173,6 +175,40 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
     return () => clearInterval(intervalId);
   }, [activeFuel, loadStations, region]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!deferredSearch) {
+      setSearchResults([]);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    const stationMatches = getSearchResults(stations, deferredSearch, activeFuel).map((station) => ({
+      kind: 'station' as const,
+      station,
+    }));
+
+    searchCities(deferredSearch).then((cityMatches) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setSearchResults([
+        ...cityMatches.map((city) => ({
+          city,
+          kind: 'city' as const,
+        })),
+        ...stationMatches,
+      ]);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeFuel, deferredSearch, stations]);
+
   function focusStation(station: Station) {
     setSelectedStationId(station.id);
     const nextRegion = {
@@ -183,6 +219,13 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
     };
 
     setRegion(nextRegion);
+    setViewportToken((value) => value + 1);
+    setSearchText('');
+  }
+
+  function focusCity(city: CitySearchResult) {
+    setSelectedStationId(null);
+    setRegion(city.region);
     setViewportToken((value) => value + 1);
     setSearchText('');
   }
@@ -254,6 +297,7 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
               onChangeFuel={setActiveFuel}
               onChangeLanguage={setLanguage}
               onChangeSearch={setSearchText}
+              onFocusCity={focusCity}
               onFocusStation={focusStation}
               onRefresh={() => loadStations(region, activeFuel, 'manual')}
               priceRange={priceRange}

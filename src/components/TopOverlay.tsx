@@ -1,11 +1,13 @@
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
-import { Clock3, LocateFixed, MapPinned, RefreshCcw, Search, Settings2 } from 'lucide-react-native';
+import { Clock3, LocateFixed, MapPinned, MapPin, RefreshCcw, Search, Settings2 } from 'lucide-react-native';
 import { useState } from 'react';
 
 import { Station } from '../lib/carburantsApi';
+import { CitySearchResult } from '../lib/citySearch';
 import { AppLanguage, copy } from '../lib/copy';
 import { formatPrice, formatTimestamp } from '../lib/format';
 import { FuelFilter, FUEL_FILTER_OPTIONS } from '../lib/fuels';
+import { SearchResultItem } from '../lib/searchTypes';
 import { DisplayPrice } from '../lib/stationDisplay';
 import { colors, shadows } from '../theme';
 import { BrandMark } from './BrandMark';
@@ -20,10 +22,11 @@ type TopOverlayProps = {
   onChangeFuel: (fuel: FuelFilter) => void;
   onChangeLanguage: (language: AppLanguage) => void;
   onChangeSearch: (value: string) => void;
+  onFocusCity: (city: CitySearchResult) => void;
   onFocusStation: (station: Station) => void;
   onRefresh: () => void;
   priceRange: { max: number | null; min: number | null };
-  searchResults: Station[];
+  searchResults: SearchResultItem[];
   searchText: string;
   stationsCount: number;
 };
@@ -38,6 +41,7 @@ export function TopOverlay({
   onChangeFuel,
   onChangeLanguage,
   onChangeSearch,
+  onFocusCity,
   onFocusStation,
   onRefresh,
   priceRange,
@@ -121,20 +125,39 @@ export function TopOverlay({
         {searchText.length > 0 ? (
           <View style={[styles.searchResults, shadows.card]}>
             {searchResults.length > 0 ? (
-              searchResults.map((station, index) => {
-                const displayPrice = getStationDisplayPrice(station);
+              searchResults.map((result, index) => {
+                if (result.kind === 'city') {
+                  return (
+                    <Pressable
+                      key={result.city.id}
+                      onPress={() => onFocusCity(result.city)}
+                      style={[styles.searchResultRow, index === searchResults.length - 1 && styles.searchResultLast]}
+                    >
+                      <View style={styles.searchResultCopy}>
+                        <Text style={styles.searchResultTitle}>{result.city.label}</Text>
+                        <Text style={styles.searchResultSubtitle}>{result.city.subtitle || t.topOverlay.cityResult}</Text>
+                      </View>
+                      <View style={styles.searchResultTag}>
+                        <MapPin color={colors.aqua} size={14} />
+                        <Text style={styles.searchResultTagText}>{t.topOverlay.cityResult}</Text>
+                      </View>
+                    </Pressable>
+                  );
+                }
+
+                const displayPrice = getStationDisplayPrice(result.station);
 
                 return (
                   <Pressable
-                    key={station.id}
-                    onPress={() => onFocusStation(station)}
+                    key={result.station.id}
+                    onPress={() => onFocusStation(result.station)}
                     style={[styles.searchResultRow, index === searchResults.length - 1 && styles.searchResultLast]}
                   >
                     <View style={styles.searchResultCopy}>
                       <Text style={styles.searchResultTitle}>
-                        {station.city} {station.postcode}
+                        {result.station.city} {result.station.postcode}
                       </Text>
-                      <Text style={styles.searchResultSubtitle}>{station.address}</Text>
+                      <Text style={styles.searchResultSubtitle}>{result.station.address}</Text>
                     </View>
                     <Text style={styles.searchResultPrice}>
                       {displayPrice ? formatPrice(displayPrice.value) : 'Indispo'}
@@ -367,6 +390,20 @@ const styles = StyleSheet.create({
     color: colors.sun,
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 13,
+  },
+  searchResultTag: {
+    alignItems: 'center',
+    backgroundColor: colors.aquaSoft,
+    borderRadius: 999,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  searchResultTagText: {
+    color: colors.aqua,
+    fontFamily: 'SpaceGrotesk_700Bold',
+    fontSize: 11,
   },
   emptySearchText: {
     color: colors.subtleText,

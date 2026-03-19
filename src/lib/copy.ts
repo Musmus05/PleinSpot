@@ -40,9 +40,10 @@ export const copy = {
     },
     topOverlay: {
       bestPrice: 'Best price found',
+      cityResult: 'City',
       brandHint: 'Main map view',
       noStation: 'No station found in the visible area.',
-      searchPlaceholder: 'Search in the visible area',
+      searchPlaceholder: 'Search a station or a city',
       stations: 'Stations',
       sync: 'Sync',
       syncing: 'Synchronizing',
@@ -88,9 +89,10 @@ export const copy = {
     },
     topOverlay: {
       bestPrice: 'Meilleur prix repere',
+      cityResult: 'Ville',
       brandHint: 'Vue principale',
       noStation: 'Aucune station trouvee dans la zone visible.',
-      searchPlaceholder: 'Rechercher dans la zone affichee',
+      searchPlaceholder: 'Rechercher une station ou une ville',
       stations: 'Stations',
       sync: 'Sync',
       syncing: 'Synchronisation',
