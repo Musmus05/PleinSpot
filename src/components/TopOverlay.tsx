@@ -61,10 +61,7 @@ export function TopOverlay({
         <View style={[styles.navRow, isDesktop && styles.navRowDesktop]}>
           <View style={styles.brandRow}>
             <BrandMark size={38} />
-            <View style={styles.brandMeta}>
-              <Text style={styles.brandName}>PleinSpot</Text>
-              <Text style={styles.brandHint}>{t.topOverlay.brandHint}</Text>
-            </View>
+            <Text style={styles.brandName}>PleinSpot</Text>
           </View>
 
           <View style={[styles.searchShell, isDesktop && styles.searchShellDesktop]}>
@@ -248,21 +245,12 @@ const styles = StyleSheet.create({
   brandRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 10,
-  },
-  brandMeta: {
-    gap: 2,
+    gap: 12,
   },
   brandName: {
     color: colors.text,
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 22,
-  },
-  brandHint: {
-    color: colors.subtleText,
-    fontFamily: 'SpaceGrotesk_500Medium',
-    fontSize: 12,
-    textTransform: 'uppercase',
   },
   searchShell: {
     alignItems: 'center',

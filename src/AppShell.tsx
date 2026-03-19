@@ -112,7 +112,7 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Impossible de recuperer les stations pour l'instant.",
+          : "Impossible de récupérer les stations pour l'instant.",
       );
     } finally {
       if (requestIdRef.current === currentRequestId) {
@@ -128,7 +128,7 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
       const permission = await Location.requestForegroundPermissionsAsync();
 
       if (permission.status !== 'granted') {
-        setErrorMessage("La geolocalisation est refusee. L'app reste centree sur Paris.");
+        setErrorMessage("La géolocalisation est refusée. L'app reste centrée sur Paris.");
         return;
       }
 
@@ -149,7 +149,7 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
       setRegion(nextRegion);
       setViewportToken((value) => value + 1);
     } catch {
-      setErrorMessage("Impossible d'acceder a votre position pour le moment.");
+      setErrorMessage("Impossible d'accéder à votre position pour le moment.");
     }
   });
 
