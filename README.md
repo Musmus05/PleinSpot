@@ -112,20 +112,4 @@ Le frontend utilise :
 GET /api/stations?latitude=...&longitude=...&latitudeDelta=...&longitudeDelta=...&fuelFilter=...&limit=...&forceRefresh=0|1
 ```
 
-### Limites actuelles
 
-- le backend garde les données en cache mémoire, pas en base de données
-- un redémarrage du serveur vide le cache
-- pour une mise en production propre, il faudra héberger le frontend et le backend ensemble ou configurer l'URL API correctement
-
-### Publication
-
-Le projet n'est plus un site purement statique.
-
-Pour le publier, il faut :
-
-- héberger le frontend
-- héberger le backend
-- configurer l'URL backend côté frontend si nécessaire
-
-GitHub Pages seul ne suffit plus pour faire tourner l'application complète.

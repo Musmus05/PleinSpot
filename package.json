@@ -6,6 +6,7 @@
     "start": "npm run dev",
     "dev": "concurrently \"npm run backend\" \"npm run web\"",
     "backend": "node ./backend/server.mjs",
+    "build:web": "expo export --platform web",
     "web": "expo start --web"
   },
   "dependencies": {

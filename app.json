@@ -6,7 +6,8 @@
     "platforms": ["web"],
     "userInterfaceStyle": "light",
     "web": {
-      "favicon": "./assets/favicon-web.png"
+      "favicon": "./assets/favicon-web.png",
+      "output": "single"
     },
     "plugins": ["expo-font"]
   }
