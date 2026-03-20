@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, GestureResponderEvent, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { Station } from '../lib/carburantsApi';
 import { AppLanguage, copy } from '../lib/copy';
@@ -26,11 +26,13 @@ export function SummaryCard({
   stations,
   userLocation,
 }: SummaryCardProps) {
-  const { width } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
   const isDesktop = width >= 1080;
   const isPhone = width < 560;
   const [isCollapsed, setIsCollapsed] = useState(isPhone);
+  const dragStartYRef = useRef<number | null>(null);
   const t = copy[language];
+  const listViewportHeight = isPhone ? Math.min(height * 0.34, 320) : undefined;
   const resultsToggleLabel = language === 'fr' ? 'Résultats' : 'Results';
 
   useEffect(() => {
@@ -39,8 +41,43 @@ export function SummaryCard({
     }
   }, [isPhone]);
 
+  function onDragHandleStart(event: GestureResponderEvent) {
+    dragStartYRef.current = event.nativeEvent.pageY;
+  }
+
+  function onDragHandleEnd(event: GestureResponderEvent) {
+    const startY = dragStartYRef.current;
+    dragStartYRef.current = null;
+
+    if (startY == null) {
+      return;
+    }
+
+    const deltaY = event.nativeEvent.pageY - startY;
+
+    if (deltaY <= -28) {
+      setIsCollapsed(false);
+      return;
+    }
+
+    if (deltaY >= 28) {
+      setIsCollapsed(true);
+    }
+  }
+
   return (
     <View style={[styles.card, shadows.floating, isDesktop && styles.cardDesktop, isPhone && styles.cardPhone]}>
+      {isPhone ? (
+        <View
+          onResponderGrant={onDragHandleStart}
+          onResponderRelease={onDragHandleEnd}
+          onStartShouldSetResponder={() => true}
+          style={styles.dragHandleZone}
+        >
+          <View style={styles.dragHandle} />
+        </View>
+      ) : null}
+
       <View style={styles.header}>
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{t.summary.top3}</Text>
@@ -61,16 +98,17 @@ export function SummaryCard({
       </View>
 
       {!isCollapsed ? (
-        <>
+        <View style={[styles.expandedContent, isPhone && styles.expandedContentPhone]}>
           <Text style={styles.title}>{t.summary.title}</Text>
           <Text style={styles.subtitle}>{t.summary.subtitle}</Text>
 
           {stations.length > 0 ? (
             <ScrollView
+              style={[styles.railViewport, isPhone && { maxHeight: listViewportHeight }]}
               contentContainerStyle={[styles.rail, isDesktop ? styles.railDesktop : styles.railMobile]}
               horizontal={isDesktop}
               showsHorizontalScrollIndicator={false}
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator={isPhone}
             >
               {stations.map((station, index) => {
                 const price = getStationDisplayPrice(station);
@@ -109,7 +147,7 @@ export function SummaryCard({
               <Text style={styles.emptyBody}>{t.summary.emptyBody}</Text>
             </View>
           )}
-        </>
+        </View>
       ) : null}
     </View>
   );
@@ -136,6 +174,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  dragHandleZone: {
+    alignItems: 'center',
+    marginBottom: 6,
+    paddingBottom: 6,
+  },
+  dragHandle: {
+    backgroundColor: colors.borderStrong,
+    borderRadius: 999,
+    height: 5,
+    width: 72,
   },
   headerActions: {
     alignItems: 'center',
@@ -178,6 +227,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginTop: 14,
   },
+  expandedContent: {
+    minHeight: 0,
+  },
+  expandedContentPhone: {
+    minHeight: 0,
+  },
   subtitle: {
     color: colors.subtleText,
     fontFamily: 'SpaceGrotesk_400Regular',
@@ -189,6 +244,9 @@ const styles = StyleSheet.create({
   rail: {
     gap: 14,
     paddingTop: 18,
+  },
+  railViewport: {
+    minHeight: 0,
   },
   railMobile: {
     paddingTop: 16,

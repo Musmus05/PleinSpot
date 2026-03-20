@@ -3,7 +3,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useEffect } from 'react';
 import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { colors } from '../theme';
 import { StationMapProps } from './StationMap.types';
@@ -64,6 +64,9 @@ export function StationMap({
   userLocation,
   viewportToken,
 }: StationMapProps) {
+  const { width } = useWindowDimensions();
+  const isPhone = width < 560;
+
   return (
     <View style={styles.wrapper}>
       <MapContainer
@@ -108,6 +111,7 @@ export function StationMap({
             <Marker
               eventHandlers={{ click: () => onSelectStation(station.id) }}
               icon={createMarkerIcon({
+                compact: isPhone,
                 fuelLabel: marker.fuelLabel,
                 priceLabel: marker.priceLabel,
                 selected: selectedStationId === station.id,
@@ -124,11 +128,13 @@ export function StationMap({
 }
 
 function createMarkerIcon({
+  compact,
   fuelLabel,
   priceLabel,
   selected,
   tone,
 }: {
+  compact: boolean;
   fuelLabel: string;
   priceLabel: string;
   selected: boolean;
@@ -137,22 +143,36 @@ function createMarkerIcon({
   const background = selected ? '#FFF3D8' : 'rgba(255,255,255,0.96)';
   const border = selected ? tone : 'rgba(110, 86, 45, 0.12)';
   const glow = selected ? '0 16px 32px rgba(255,191,71,0.26)' : '0 12px 24px rgba(184,169,143,0.20)';
+  const width = compact ? 68 : 92;
+  const height = compact ? 32 : 40;
+  const padding = compact ? '7px 9px' : '10px 12px';
+  const gap = compact ? 7 : 10;
+  const priceSize = compact ? 12 : 14;
+  const fuelSize = compact ? 10 : 11;
+  const dotSize = compact ? 8 : 10;
+  const iconAnchorX = width / 2;
+  const iconAnchorY = compact ? 18 : 24;
+  const compactFuelRow = compact && !selected;
 
   return L.divIcon({
     className: '',
     html: `
       <div style="display:flex;flex-direction:column;align-items:center;transform:${selected ? 'scale(1.04)' : 'scale(1)'};">
-        <div style="display:flex;align-items:center;gap:10px;min-width:92px;padding:10px 12px;border-radius:18px;border:1px solid ${border};background:${background};box-shadow:${glow};">
-          <div style="width:10px;height:10px;border-radius:999px;background:${tone};flex-shrink:0;"></div>
+        <div style="display:flex;align-items:center;gap:${gap}px;min-width:${width}px;padding:${padding};border-radius:${compact ? 16 : 18}px;border:1px solid ${border};background:${background};box-shadow:${glow};">
+          <div style="width:${dotSize}px;height:${dotSize}px;border-radius:999px;background:${tone};flex-shrink:0;"></div>
           <div style="display:flex;flex-direction:column;">
-            <div style="font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:#2E261F;line-height:1;">${priceLabel}</div>
-            <div style="font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:500;color:#857A6D;margin-top:4px;line-height:1;">${fuelLabel}</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:${priceSize}px;font-weight:700;color:#2E261F;line-height:1;">${priceLabel}</div>
+            ${
+              compactFuelRow
+                ? ''
+                : `<div style="font-family:'Space Grotesk',sans-serif;font-size:${fuelSize}px;font-weight:500;color:#857A6D;margin-top:${compact ? 3 : 4}px;line-height:1;">${fuelLabel}</div>`
+            }
           </div>
         </div>
       </div>
     `,
-    iconAnchor: [46, 24],
-    iconSize: [92, 40],
+    iconAnchor: [iconAnchorX, iconAnchorY],
+    iconSize: [width, height],
   });
 }
 

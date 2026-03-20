@@ -70,6 +70,7 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
   const priceRange = getPriceRange(stations, activeFuel);
   const topStations = getSortedStations(stations, activeFuel).slice(0, 3);
   const isDesktop = width >= 1080;
+  const stationLimit = width < 560 ? 70 : width < 900 ? 120 : 220;
   const t = copy[language];
 
   const loadStations = useEffectEvent(async (nextRegion: MapRegion, fuelFilter: FuelFilter, mode: RefreshMode) => {
@@ -87,7 +88,7 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
         forceRefresh: mode === 'manual',
         region: nextRegion,
         fuelFilter,
-        limit: 220,
+        limit: stationLimit,
       });
 
       if (requestIdRef.current !== currentRequestId) {
@@ -166,7 +167,7 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
     }, 320);
 
     return () => clearTimeout(timeoutId);
-  }, [activeFuel, loadStations, region]);
+  }, [activeFuel, loadStations, region, stationLimit]);
 
   useEffect(() => {
     let isMounted = true;

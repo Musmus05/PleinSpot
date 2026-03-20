@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { GestureResponderEvent, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Clock3, Coffee, MapPin, Navigation, ShieldCheck, ShoppingBag, Sparkles, Waves, X } from 'lucide-react-native';
 
 import { Station } from '../lib/carburantsApi';
@@ -43,16 +43,18 @@ export function StationSheet({
   userLocation,
   visibleStations,
 }: StationSheetProps) {
-  const { width } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
   const isDesktop = width >= 1080;
   const isNarrow = width < 480;
   const spotlightPrice = getDisplayPrice(station, activeFuel);
   const distance = userLocation ? formatDistanceLabel(getDistanceInKm(userLocation, station.coordinates)) : null;
   const t = copy[language];
   const [officialDetails, setOfficialDetails] = useState<StationOfficialDetails | null>(null);
+  const dragStartYRef = useRef<number | null>(null);
   const brand = officialDetails?.brand ?? getStationBrand(station);
   const stationName = officialDetails?.name;
   const cardWidth = isDesktop ? 376 : Math.min(width - 32, 440);
+  const cardMaxHeight = isDesktop ? Math.max(height - 232, 420) : Math.min(height * 0.72, 620);
   const comparisonCards = getComparisonCardData(station, visibleStations, activeFuel);
 
   useEffect(() => {
@@ -71,11 +73,48 @@ export function StationSheet({
     };
   }, [station.id]);
 
+  function onHandleDragStart(event: GestureResponderEvent) {
+    dragStartYRef.current = event.nativeEvent.pageY;
+  }
+
+  function onHandleDragEnd(event: GestureResponderEvent) {
+    const startY = dragStartYRef.current;
+    dragStartYRef.current = null;
+
+    if (startY == null) {
+      return;
+    }
+
+    if (event.nativeEvent.pageY - startY >= 36) {
+      onClose();
+    }
+  }
+
   return (
-    <View style={[styles.sheet, shadows.floating, { width: cardWidth }, isDesktop && styles.sheetDesktop]}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} stickyHeaderIndices={[0]}>
+    <View
+      style={[
+        styles.sheet,
+        shadows.floating,
+        { maxHeight: cardMaxHeight, width: cardWidth },
+        isDesktop && styles.sheetDesktop,
+      ]}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={isDesktop ? [0] : undefined}
+      >
         <View style={styles.stickyHeader}>
-          {!isDesktop ? <View style={styles.handle} /> : null}
+          {!isDesktop ? (
+            <View
+              onResponderGrant={onHandleDragStart}
+              onResponderRelease={onHandleDragEnd}
+              onStartShouldSetResponder={() => true}
+              style={styles.handleZone}
+            >
+              <View style={styles.handle} />
+            </View>
+          ) : null}
 
           <View style={styles.topRow}>
             <View style={styles.topMeta}>
@@ -416,12 +455,16 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     paddingBottom: 18,
   },
+  handleZone: {
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingBottom: 6,
+  },
   handle: {
     alignSelf: 'center',
     backgroundColor: colors.borderStrong,
     borderRadius: 999,
     height: 5,
-    marginBottom: 16,
     width: 72,
   },
   topRow: {
