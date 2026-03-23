@@ -1,6 +1,5 @@
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, GestureResponderEvent, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { Station } from '../lib/carburantsApi';
 import { AppLanguage, copy } from '../lib/copy';
@@ -11,8 +10,10 @@ import { colors, shadows } from '../theme';
 
 type SummaryCardProps = {
   getStationDisplayPrice: (station: Station) => DisplayPrice | null;
+  isCollapsed: boolean;
   isLoading: boolean;
   language: AppLanguage;
+  onChangeCollapsed: (nextValue: boolean) => void;
   onFocusStation: (station: Station) => void;
   stations: Station[];
   userLocation: { latitude: number; longitude: number } | null;
@@ -20,8 +21,10 @@ type SummaryCardProps = {
 
 export function SummaryCard({
   getStationDisplayPrice,
+  isCollapsed,
   isLoading,
   language,
+  onChangeCollapsed,
   onFocusStation,
   stations,
   userLocation,
@@ -29,71 +32,26 @@ export function SummaryCard({
   const { height, width } = useWindowDimensions();
   const isDesktop = width >= 1080;
   const isPhone = width < 560;
-  const [isCollapsed, setIsCollapsed] = useState(isPhone);
-  const dragStartYRef = useRef<number | null>(null);
   const t = copy[language];
   const listViewportHeight = isPhone ? Math.min(height * 0.34, 320) : undefined;
   const resultsToggleLabel = language === 'fr' ? 'Résultats' : 'Results';
 
-  useEffect(() => {
-    if (!isPhone) {
-      setIsCollapsed(false);
-    }
-  }, [isPhone]);
-
-  function onDragHandleStart(event: GestureResponderEvent) {
-    dragStartYRef.current = event.nativeEvent.pageY;
-  }
-
-  function onDragHandleEnd(event: GestureResponderEvent) {
-    const startY = dragStartYRef.current;
-    dragStartYRef.current = null;
-
-    if (startY == null) {
-      return;
-    }
-
-    const deltaY = event.nativeEvent.pageY - startY;
-
-    if (deltaY <= -28) {
-      setIsCollapsed(false);
-      return;
-    }
-
-    if (deltaY >= 28) {
-      setIsCollapsed(true);
-    }
-  }
-
   return (
     <View style={[styles.card, shadows.floating, isDesktop && styles.cardDesktop, isPhone && styles.cardPhone]}>
-      {isPhone ? (
-        <View
-          onResponderGrant={onDragHandleStart}
-          onResponderRelease={onDragHandleEnd}
-          onStartShouldSetResponder={() => true}
-          style={styles.dragHandleZone}
-        >
-          <View style={styles.dragHandle} />
-        </View>
-      ) : null}
-
       <View style={styles.header}>
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{t.summary.top3}</Text>
         </View>
         <View style={styles.headerActions}>
           {isLoading ? <ActivityIndicator color={colors.sun} /> : null}
-          {isPhone ? (
-            <Pressable onPress={() => setIsCollapsed((value) => !value)} style={styles.collapseButton}>
-              <Text style={styles.collapseButtonText}>{resultsToggleLabel}</Text>
-              {isCollapsed ? (
-                <ChevronUp color={colors.subtleTextStrong} size={14} />
-              ) : (
-                <ChevronDown color={colors.subtleTextStrong} size={14} />
-              )}
-            </Pressable>
-          ) : null}
+          <Pressable onPress={() => onChangeCollapsed(!isCollapsed)} style={styles.collapseButton}>
+            <Text style={styles.collapseButtonText}>{resultsToggleLabel}</Text>
+            {isCollapsed ? (
+              <ChevronUp color={colors.subtleTextStrong} size={14} />
+            ) : (
+              <ChevronDown color={colors.subtleTextStrong} size={14} />
+            )}
+          </Pressable>
         </View>
       </View>
 
@@ -174,17 +132,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-  },
-  dragHandleZone: {
-    alignItems: 'center',
-    marginBottom: 6,
-    paddingBottom: 6,
-  },
-  dragHandle: {
-    backgroundColor: colors.borderStrong,
-    borderRadius: 999,
-    height: 5,
-    width: 72,
   },
   headerActions: {
     alignItems: 'center',

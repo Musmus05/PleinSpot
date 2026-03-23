@@ -62,6 +62,8 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
   const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [viewportToken, setViewportToken] = useState(0);
+  const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(width < 560);
+  const [topOverlayHeight, setTopOverlayHeight] = useState(200);
   const hasLoadedOnceRef = useRef(false);
   const requestIdRef = useRef(0);
   const deferredSearch = useDeferredValue(searchText.trim().toLowerCase());
@@ -281,27 +283,46 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
           />
 
           <View pointerEvents="box-none" style={styles.overlay}>
-            <TopOverlay
-              activeFuel={activeFuel}
-              getStationDisplayPrice={(station) => getDisplayPrice(station, activeFuel)}
-              isRefreshing={isRefreshing}
-              language={language}
-              lastSyncAt={lastCheckAt ?? lastSnapshotAt}
-              onCenterUser={centerOnLocation}
-              onChangeFuel={setActiveFuel}
-              onChangeLanguage={setLanguage}
-              onChangeSearch={setSearchText}
-              onFocusCity={focusCity}
-              onFocusStation={focusStation}
-              onRefresh={() => loadStations(region, activeFuel, 'manual')}
-              priceRange={priceRange}
-              searchResults={searchResults}
-              searchText={searchText}
-              stationsCount={stations.length}
-            />
+            <View
+              onLayout={(event) => {
+                const nextHeight = Math.ceil(event.nativeEvent.layout.height);
+
+                setTopOverlayHeight((currentHeight) =>
+                  Math.abs(currentHeight - nextHeight) > 1 ? nextHeight : currentHeight,
+                );
+              }}
+              pointerEvents="box-none"
+            >
+              <TopOverlay
+                activeFuel={activeFuel}
+                getStationDisplayPrice={(station) => getDisplayPrice(station, activeFuel)}
+                isRefreshing={isRefreshing}
+                language={language}
+                lastSyncAt={lastCheckAt ?? lastSnapshotAt}
+                onCenterUser={centerOnLocation}
+                onChangeFuel={setActiveFuel}
+                onChangeLanguage={setLanguage}
+                onChangeSearch={setSearchText}
+                onFocusCity={focusCity}
+                onFocusStation={focusStation}
+                onRefresh={() => loadStations(region, activeFuel, 'manual')}
+                priceRange={priceRange}
+                searchResults={searchResults}
+                searchText={searchText}
+                stationsCount={stations.length}
+              />
+            </View>
 
             {selectedStation && isDesktop ? (
-              <View pointerEvents="box-none" style={styles.desktopSheetRail}>
+              <View
+                pointerEvents="box-none"
+                style={[
+                  styles.desktopSheetRail,
+                  {
+                    top: topOverlayHeight + 20,
+                  },
+                ]}
+              >
                 <StationSheet
                   activeFuel={activeFuel}
                   language={language}
@@ -342,8 +363,10 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
                 ) : !selectedStation ? (
                   <SummaryCard
                     getStationDisplayPrice={(station) => getDisplayPrice(station, activeFuel)}
+                    isCollapsed={isSummaryCollapsed}
                     isLoading={isLoading}
                     language={language}
+                    onChangeCollapsed={setIsSummaryCollapsed}
                     onFocusStation={focusStation}
                     stations={topStations}
                     userLocation={userLocation}
@@ -408,7 +431,6 @@ const styles = StyleSheet.create({
     bottom: 24,
     position: 'absolute',
     right: 20,
-    top: 200,
     width: 376,
   },
   bottomPanel: {

@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
-import { ChevronDown, ChevronUp, Clock3, LocateFixed, MapPinned, MapPin, RefreshCcw, Search, Settings2 } from 'lucide-react-native';
+import { Clock3, LocateFixed, MapPinned, MapPin, Menu, RefreshCcw, Search, Settings2, X } from 'lucide-react-native';
 import { useState } from 'react';
 
 import { Station } from '../lib/carburantsApi';
@@ -51,57 +51,111 @@ export function TopOverlay({
 }: TopOverlayProps) {
   const { width } = useWindowDimensions();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isDesktop = width >= 1080;
   const isTablet = width < 900;
   const isPhone = width < 560;
   const t = copy[language];
   const activeFuelLabel = FUEL_FILTER_OPTIONS.find((option) => option.key === activeFuel)?.label ?? 'Tout voir';
-  const filtersToggleLabel = language === 'fr' ? 'Filtres' : 'Filters';
-  const infoToggleLabel = language === 'fr' ? 'Infos' : 'Info';
-  const showFilters = !isPhone || isFiltersOpen;
-  const showInfo = !isPhone || isInfoOpen;
+  const showMobileMenu = !isPhone || isMobileMenuOpen;
+  const showFilters = !isPhone || isMobileMenuOpen;
+  const showInfo = !isPhone || isMobileMenuOpen;
+
+  function toggleMobileMenu() {
+    setIsMobileMenuOpen((currentValue) => {
+      const nextValue = !currentValue;
+
+      if (!nextValue) {
+        setIsSettingsOpen(false);
+      }
+
+      return nextValue;
+    });
+  }
 
   return (
     <View style={[styles.topPanel, isPhone && styles.topPanelPhone]}>
       <View style={[styles.heroCard, shadows.floating, isPhone && styles.heroCardPhone]}>
-        <View style={[styles.navRow, isDesktop && styles.navRowDesktop]}>
+        <View style={[styles.navRow, isDesktop && styles.navRowDesktop, isPhone && styles.navRowPhone]}>
           <View style={[styles.brandRow, isPhone && styles.brandRowPhone]}>
             <BrandMark size={38} />
             <Text style={[styles.brandName, isPhone && styles.brandNamePhone]}>PleinSpot</Text>
           </View>
 
-          <View style={[styles.searchShell, isDesktop && styles.searchShellDesktop]}>
-            <Search color={colors.subtleText} size={16} />
-            <TextInput
-              onChangeText={onChangeSearch}
-              placeholder={t.topOverlay.searchPlaceholder}
-              placeholderTextColor={colors.subtleText}
-              selectionColor={colors.sun}
-              style={styles.searchInput}
-              value={searchText}
-            />
-          </View>
-
-          <View style={[styles.navActions, isPhone && styles.navActionsPhone]}>
-            <Pressable onPress={() => setIsSettingsOpen((value) => !value)} style={styles.iconButton}>
-              <Settings2 color={colors.subtleTextStrong} size={16} />
-            </Pressable>
-            <Pressable onPress={onRefresh} style={styles.iconButton}>
-              {isRefreshing ? (
-                <ActivityIndicator color={colors.subtleTextStrong} size="small" />
+          {isPhone ? (
+            <Pressable onPress={toggleMobileMenu} style={styles.iconButton}>
+              {isMobileMenuOpen ? (
+                <X color={colors.subtleTextStrong} size={18} />
               ) : (
-                <RefreshCcw color={colors.subtleTextStrong} size={16} />
+                <Menu color={colors.subtleTextStrong} size={18} />
               )}
             </Pressable>
-            <Pressable onPress={onCenterUser} style={styles.iconButton}>
-              <LocateFixed color={colors.subtleTextStrong} size={16} />
-            </Pressable>
-          </View>
+          ) : (
+            <>
+              <View style={[styles.searchShell, isDesktop && styles.searchShellDesktop]}>
+                <Search color={colors.subtleText} size={16} />
+                <TextInput
+                  onChangeText={onChangeSearch}
+                  placeholder={t.topOverlay.searchPlaceholder}
+                  placeholderTextColor={colors.subtleText}
+                  selectionColor={colors.sun}
+                  style={styles.searchInput}
+                  value={searchText}
+                />
+              </View>
+
+              <View style={styles.navActions}>
+                <Pressable onPress={() => setIsSettingsOpen((value) => !value)} style={styles.iconButton}>
+                  <Settings2 color={colors.subtleTextStrong} size={16} />
+                </Pressable>
+                <Pressable onPress={onRefresh} style={styles.iconButton}>
+                  {isRefreshing ? (
+                    <ActivityIndicator color={colors.subtleTextStrong} size="small" />
+                  ) : (
+                    <RefreshCcw color={colors.subtleTextStrong} size={16} />
+                  )}
+                </Pressable>
+                <Pressable onPress={onCenterUser} style={styles.iconButton}>
+                  <LocateFixed color={colors.subtleTextStrong} size={16} />
+                </Pressable>
+              </View>
+            </>
+          )}
         </View>
 
-        {isSettingsOpen ? (
+        {isPhone && isMobileMenuOpen ? (
+          <View style={styles.mobileMenuContent}>
+            <View style={styles.searchShell}>
+              <Search color={colors.subtleText} size={16} />
+              <TextInput
+                onChangeText={onChangeSearch}
+                placeholder={t.topOverlay.searchPlaceholder}
+                placeholderTextColor={colors.subtleText}
+                selectionColor={colors.sun}
+                style={styles.searchInput}
+                value={searchText}
+              />
+            </View>
+
+            <View style={[styles.navActions, styles.navActionsPhone, styles.mobileMenuActions]}>
+              <Pressable onPress={() => setIsSettingsOpen((value) => !value)} style={styles.iconButton}>
+                <Settings2 color={colors.subtleTextStrong} size={16} />
+              </Pressable>
+              <Pressable onPress={onRefresh} style={styles.iconButton}>
+                {isRefreshing ? (
+                  <ActivityIndicator color={colors.subtleTextStrong} size="small" />
+                ) : (
+                  <RefreshCcw color={colors.subtleTextStrong} size={16} />
+                )}
+              </Pressable>
+              <Pressable onPress={onCenterUser} style={styles.iconButton}>
+                <LocateFixed color={colors.subtleTextStrong} size={16} />
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+
+        {isSettingsOpen && showMobileMenu ? (
           <View style={[styles.settingsCard, shadows.card, isPhone && styles.settingsCardPhone]}>
             <Text style={styles.settingsTitle}>{t.settings.title}</Text>
             <Text style={styles.settingsLabel}>{t.settings.language}</Text>
@@ -127,7 +181,7 @@ export function TopOverlay({
           </View>
         ) : null}
 
-        {searchText.length > 0 ? (
+        {searchText.length > 0 && showMobileMenu ? (
           <View style={[styles.searchResults, shadows.card]}>
             {searchResults.length > 0 ? (
               searchResults.map((result, index) => {
@@ -176,28 +230,7 @@ export function TopOverlay({
           </View>
         ) : null}
 
-        {isPhone ? (
-          <View style={styles.mobileToggleRow}>
-            <Pressable onPress={() => setIsFiltersOpen((value) => !value)} style={styles.mobileToggleChip}>
-              <Text style={styles.mobileToggleText}>{filtersToggleLabel}</Text>
-              {isFiltersOpen ? (
-                <ChevronUp color={colors.subtleTextStrong} size={14} />
-              ) : (
-                <ChevronDown color={colors.subtleTextStrong} size={14} />
-              )}
-            </Pressable>
-            <Pressable onPress={() => setIsInfoOpen((value) => !value)} style={styles.mobileToggleChip}>
-              <Text style={styles.mobileToggleText}>{infoToggleLabel}</Text>
-              {isInfoOpen ? (
-                <ChevronUp color={colors.subtleTextStrong} size={14} />
-              ) : (
-                <ChevronDown color={colors.subtleTextStrong} size={14} />
-              )}
-            </Pressable>
-          </View>
-        ) : null}
-
-        {showFilters || showInfo ? (
+        {showMobileMenu && (showFilters || showInfo) ? (
           <View style={[styles.heroBody, isDesktop && styles.heroBodyDesktop]}>
             <View style={styles.heroMain}>
               {showFilters ? (
@@ -289,6 +322,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
   },
+  navRowPhone: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
   brandRow: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -332,6 +370,13 @@ const styles = StyleSheet.create({
   },
   navActionsPhone: {
     justifyContent: 'flex-start',
+  },
+  mobileMenuContent: {
+    gap: 12,
+    marginTop: 12,
+  },
+  mobileMenuActions: {
+    gap: 10,
   },
   iconButton: {
     alignItems: 'center',
