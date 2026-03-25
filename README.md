@@ -1,88 +1,12 @@
 # PleinSpot
 
-PleinSpot est une application web de comparaison de prix des carburants avec un vrai backend Node.
+PleinSpot est une application web de comparaison de prix des carburants.
+Le projet contient :
 
-Le frontend affiche la carte, la recherche, les filtres et les fiches station. Le backend récupère le flux officiel des prix des carburants, le met en cache, filtre les stations selon la zone demandée et permet une vraie synchronisation au clic sur le bouton refresh.
+- un frontend Expo Web / React
+- un backend Node.js qui recupere les donnees publiques officielles
 
-## Documentation Utilisateur
-
-### Fonctions principales
-
-- visualiser les stations visibles sur la carte
-- filtrer par carburant
-- rechercher une ville ou une station
-- ouvrir une fiche station détaillée
-- comparer les prix dans la zone affichée
-- lancer un itinéraire Google Maps
-
-### Ce que fait le bouton refresh
-
-Le bouton refresh appelle maintenant le backend.
-
-Concrètement, il :
-
-- force un nouveau téléchargement du flux officiel
-- reconstruit les données côté serveur
-- recharge les stations visibles dans l'application
-- met à jour l'heure de dernière vérification dans l'interface
-
-### Mobile / responsive
-
-Sur petit écran :
-
-- le bloc du haut peut être replié avec `Filtres` et `Infos`
-- le bloc du bas peut être replié avec `Résultats`
-- la carte reste plus visible quand les panneaux sont fermés
-
-## Documentation Technique
-
-### Stack
-
-- Expo Web
-- React 19
-- React Native Web
-- Leaflet / React Leaflet
-- Node.js
-- fflate
-- fast-xml-parser
-
-### Architecture
-
-#### Frontend
-
-- [App.tsx](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/App.tsx)
-- [AppShell.tsx](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/src/AppShell.tsx)
-- [TopOverlay.tsx](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/src/components/TopOverlay.tsx)
-- [SummaryCard.tsx](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/src/components/SummaryCard.tsx)
-- [StationSheet.tsx](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/src/components/StationSheet.tsx)
-- [StationMap.web.tsx](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/src/components/StationMap.web.tsx)
-
-Le frontend parle au backend via :
-
-- [carburantsApiWeb.ts](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/src/lib/carburantsApiWeb.ts)
-
-#### Backend
-
-- [server.mjs](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/backend/server.mjs)
-- [fuelDataService.mjs](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/backend/fuelDataService.mjs)
-
-Responsabilités du backend :
-
-- exposer `GET /api/health`
-- exposer `GET /api/stations`
-- récupérer le flux officiel `https://donnees.roulez-eco.fr/opendata/instantane`
-- parser l'archive ZIP et le XML
-- mettre les stations en cache mémoire
-- forcer une resynchronisation quand `forceRefresh=1`
-
-### Scripts
-
-- `npm start` : lance frontend + backend
-- `npm run dev` : lance frontend + backend
-- `npm run backend` : lance uniquement le backend
-- `npm run web` : lance uniquement le frontend
-
-### Lancement local
+## Demarrage local
 
 Installation :
 
@@ -90,26 +14,68 @@ Installation :
 npm install
 ```
 
-Lancement complet :
+Mode developpement complet :
+
+```bash
+npm run dev
+```
+
+- frontend Expo Web : `http://localhost:8081`
+- backend Node : `http://localhost:4000`
+
+Si tu veux seulement le backend :
 
 ```bash
 npm start
 ```
 
-Le frontend tourne via Expo Web et le backend via Node sur `http://localhost:4000`.
+Si tu veux seulement exporter le frontend web :
 
-Si besoin, le frontend peut viser une autre URL backend avec :
+```bash
+npm run build:web
+```
+
+## Deploiement Heroku
+
+Le projet est maintenant adapte a un deploiement Heroku simple :
+
+- Heroku lance `npm start`
+- le backend ecoute automatiquement sur `process.env.PORT`
+- Heroku lance `heroku-postbuild`, qui genere le frontend dans `dist/`
+- le serveur Node sert ensuite les fichiers statiques de `dist/` et les routes API `/api/*`
+
+Fichiers utiles :
+
+- [package.json](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/package.json)
+- [Procfile](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/Procfile)
+- [backend/server.mjs](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/backend/server.mjs)
+
+Commande typique :
+
+```bash
+heroku create
+git push heroku main
+```
+
+Optionnel en local, si le frontend doit viser un autre backend :
 
 ```bash
 EXPO_PUBLIC_API_BASE_URL=http://localhost:4000
 ```
 
-### Endpoint principal
+## Securite
 
-Le frontend utilise :
+Controle effectue sur le depot :
 
-```text
-GET /api/stations?latitude=...&longitude=...&latitudeDelta=...&longitudeDelta=...&fuelFilter=...&limit=...&forceRefresh=0|1
-```
+- aucune reference projet a Render n'a ete trouvee
+- aucune cle API, secret, token ou mot de passe n'a ete trouve dans les fichiers du projet
+- les fichiers `.env` sont ignores par Git via `.gitignore`
+- le backend consomme seulement des donnees publiques :
+  - `https://donnees.roulez-eco.fr/opendata/instantane`
+  - `https://geo.api.gouv.fr/communes`
 
+Points a connaitre :
 
+- publier le site ne diffuse pas d'information personnelle te concernant dans ce depot, d'apres les fichiers verifies
+- si tu ajoutes plus tard des variables sensibles, il faudra les stocker dans les Config Vars Heroku et pas dans le code
+- le site charge aussi certaines donnees publiques externes, donc les visiteurs peuvent contacter ces services publics directement depuis leur navigateur
