@@ -3,12 +3,14 @@ import { XMLParser } from 'fast-xml-parser';
 
 const API_URL = 'https://donnees.roulez-eco.fr/opendata/instantane';
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const REGION_CACHE_TTL_MS = 20 * 1000;
 const LAT_LON_SCALE = 100000;
 const FUEL_OPTIONS = ['gazole', 'sp95', 'e10', 'sp98', 'e85', 'gplc'];
 
 let cachedStations = null;
 let cacheFetchedAt = null;
 let inflightLoad = null;
+const regionResponseCache = new Map();
 
 const parser = new XMLParser({
   allowBooleanAttributes: true,
@@ -22,17 +24,47 @@ export async function fetchStationsInRegion({
   limit = 220,
   region,
 }) {
+  if (forceRefresh) {
+    regionResponseCache.clear();
+  }
+
   const { fetchedAt, stations } = await getCachedStations(forceRefresh);
+  const regionCacheKey = getRegionCacheKey({
+    fetchedAt,
+    fuelFilter,
+    limit,
+    region,
+  });
+
+  if (!forceRefresh) {
+    const cachedRegionResponse = regionResponseCache.get(regionCacheKey);
+
+    if (cachedRegionResponse && cachedRegionResponse.expiresAt > Date.now()) {
+      return cachedRegionResponse.value;
+    }
+  }
+
   const visibleStations = stations.filter((station) => isStationVisible(station, region));
   const filteredByFuel =
     fuelFilter === 'all'
       ? visibleStations
       : visibleStations.filter((station) => station.prices[fuelFilter] != null);
 
-  return {
+  const response = {
     fetchedAt,
     stations: sortStationsByFuel(filteredByFuel, fuelFilter).slice(0, limit),
   };
+
+  if (!forceRefresh) {
+    regionResponseCache.set(regionCacheKey, {
+      expiresAt: Date.now() + REGION_CACHE_TTL_MS,
+      value: response,
+    });
+  }
+
+  pruneExpiredRegionCache();
+
+  return response;
 }
 
 async function getCachedStations(forceRefresh = false) {
@@ -288,4 +320,30 @@ function decodeLatin1(bytes) {
   }
 
   return result;
+}
+
+function getRegionCacheKey({ fetchedAt, fuelFilter, limit, region }) {
+  return [
+    fetchedAt,
+    fuelFilter,
+    limit,
+    roundRegionValue(region.latitude, 3),
+    roundRegionValue(region.longitude, 3),
+    roundRegionValue(region.latitudeDelta, 3),
+    roundRegionValue(region.longitudeDelta, 3),
+  ].join(':');
+}
+
+function roundRegionValue(value, precision) {
+  return Number(value).toFixed(precision);
+}
+
+function pruneExpiredRegionCache() {
+  const now = Date.now();
+
+  for (const [key, entry] of regionResponseCache) {
+    if (entry.expiresAt <= now) {
+      regionResponseCache.delete(key);
+    }
+  }
 }
