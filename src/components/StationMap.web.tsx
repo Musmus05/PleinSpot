@@ -8,6 +8,11 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { colors } from '../theme';
 import { StationMapProps } from './StationMap.types';
 
+const WORLD_BOUNDS: [[number, number], [number, number]] = [
+  [-85, -180],
+  [85, 180],
+];
+
 function MapController({
   onMapPress,
   onRegionChangeComplete,
@@ -71,14 +76,19 @@ export function StationMap({
     <View style={styles.wrapper}>
       <MapContainer
         center={[region.latitude, region.longitude]}
+        maxBounds={WORLD_BOUNDS}
+        maxBoundsViscosity={1}
+        minZoom={3}
         preferCanvas
         scrollWheelZoom
         style={styles.map}
+        worldCopyJump={false}
         zoom={11}
         zoomControl={false}
       >
         <TileLayer
           attribution='&copy; OpenStreetMap contributors &copy; CARTO'
+          noWrap
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         />
 

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { GestureResponderEvent, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Clock3, Coffee, MapPin, Navigation, ShieldCheck, ShoppingBag, Sparkles, Waves, X } from 'lucide-react-native';
 
 import { Station } from '../lib/carburantsApi';
@@ -50,7 +50,6 @@ export function StationSheet({
   const distance = userLocation ? formatDistanceLabel(getDistanceInKm(userLocation, station.coordinates)) : null;
   const t = copy[language];
   const [officialDetails, setOfficialDetails] = useState<StationOfficialDetails | null>(null);
-  const dragStartYRef = useRef<number | null>(null);
   const brand = officialDetails?.brand ?? getStationBrand(station);
   const stationName = officialDetails?.name;
   const cardWidth = isDesktop ? 376 : Math.min(width - 32, 440);
@@ -73,23 +72,6 @@ export function StationSheet({
     };
   }, [station.id]);
 
-  function onHandleDragStart(event: GestureResponderEvent) {
-    dragStartYRef.current = event.nativeEvent.pageY;
-  }
-
-  function onHandleDragEnd(event: GestureResponderEvent) {
-    const startY = dragStartYRef.current;
-    dragStartYRef.current = null;
-
-    if (startY == null) {
-      return;
-    }
-
-    if (event.nativeEvent.pageY - startY >= 36) {
-      onClose();
-    }
-  }
-
   return (
     <View
       style={[
@@ -105,17 +87,6 @@ export function StationSheet({
         stickyHeaderIndices={isDesktop ? [0] : undefined}
       >
         <View style={styles.stickyHeader}>
-          {!isDesktop ? (
-            <View
-              onResponderGrant={onHandleDragStart}
-              onResponderRelease={onHandleDragEnd}
-              onStartShouldSetResponder={() => true}
-              style={styles.handleZone}
-            >
-              <View style={styles.handle} />
-            </View>
-          ) : null}
-
           <View style={styles.topRow}>
             <View style={styles.topMeta}>
               <View style={styles.openBadge}>
@@ -452,20 +423,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.panelRaised,
     marginHorizontal: -18,
     paddingHorizontal: 18,
-    paddingTop: 18,
+    paddingTop: 6,
     paddingBottom: 18,
-  },
-  handleZone: {
-    alignItems: 'center',
-    marginBottom: 10,
-    paddingBottom: 6,
-  },
-  handle: {
-    alignSelf: 'center',
-    backgroundColor: colors.borderStrong,
-    borderRadius: 999,
-    height: 5,
-    width: 72,
   },
   topRow: {
     alignItems: 'center',
