@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Station } from '../lib/carburantsApi';
 import { CitySearchResult } from '../lib/citySearch';
 import { AppLanguage, copy } from '../lib/copy';
-import { formatTimestamp } from '../lib/format';
+import { formatPrice, formatTimestamp } from '../lib/format';
 import { FuelFilterOptionKey, FuelSelection, FUEL_FILTER_OPTIONS, isFuelOptionActive } from '../lib/fuels';
 import { SearchResultItem } from '../lib/searchTypes';
 import { DisplayPrice } from '../lib/stationDisplay';
@@ -63,7 +63,7 @@ export function TopOverlay({
   const showMobileMenu = !isPhone || isMobileMenuOpen;
   const showFilters = !isPhone || isMobileMenuOpen;
   const showInfo = !isPhone || isMobileMenuOpen;
-  const showSearchResults = normalizedSearchText.length >= 2 && (!isPhone || showMobileMenu);
+  const showSearchResults = normalizedSearchText.length >= 2;
 
   function toggleMobileMenu() {
     setIsMobileMenuOpen((currentValue) => {
@@ -195,44 +195,49 @@ export function TopOverlay({
           <View style={[styles.searchResults, shadows.card]}>
             {searchResults.length > 0 ? (
               searchResults.map((result, index) => {
-                if (result.kind === 'city') {
+                try {
+                  if (result.kind === 'city') {
+                    return (
+                      <Pressable
+                        key={result.city.id}
+                        onPress={() => onFocusCity(result.city)}
+                        style={[styles.searchResultRow, index === searchResults.length - 1 && styles.searchResultLast]}
+                      >
+                        <View style={styles.searchResultCopy}>
+                          <Text style={styles.searchResultTitle}>{result.city.label}</Text>
+                          <Text style={styles.searchResultSubtitle}>{result.city.subtitle || t.topOverlay.cityResult}</Text>
+                        </View>
+                        <View style={styles.searchResultTag}>
+                          <MapPin color={colors.aqua} size={14} />
+                          <Text style={styles.searchResultTagText}>{t.topOverlay.cityResult}</Text>
+                        </View>
+                      </Pressable>
+                    );
+                  }
+
+                  const displayPrice = getStationDisplayPrice(result.station);
+
                   return (
                     <Pressable
-                      key={result.city.id}
-                      onPress={() => onFocusCity(result.city)}
+                      key={result.station.id}
+                      onPress={() => onFocusStation(result.station)}
                       style={[styles.searchResultRow, index === searchResults.length - 1 && styles.searchResultLast]}
                     >
                       <View style={styles.searchResultCopy}>
-                        <Text style={styles.searchResultTitle}>{result.city.label}</Text>
-                        <Text style={styles.searchResultSubtitle}>{result.city.subtitle || t.topOverlay.cityResult}</Text>
+                        <Text style={styles.searchResultTitle}>
+                          {result.station.city} {result.station.postcode}
+                        </Text>
+                        <Text style={styles.searchResultSubtitle}>{result.station.address}</Text>
                       </View>
-                      <View style={styles.searchResultTag}>
-                        <MapPin color={colors.aqua} size={14} />
-                        <Text style={styles.searchResultTagText}>{t.topOverlay.cityResult}</Text>
-                      </View>
+                      <Text style={styles.searchResultPrice}>
+                        {displayPrice ? formatPrice(displayPrice.value) : 'Indispo'}
+                      </Text>
                     </Pressable>
                   );
+                } catch (error) {
+                  console.error('Error rendering search result:', error);
+                  return null;
                 }
-
-                const displayPrice = getStationDisplayPrice(result.station);
-
-                return (
-                  <Pressable
-                    key={result.station.id}
-                    onPress={() => onFocusStation(result.station)}
-                    style={[styles.searchResultRow, index === searchResults.length - 1 && styles.searchResultLast]}
-                  >
-                    <View style={styles.searchResultCopy}>
-                      <Text style={styles.searchResultTitle}>
-                        {result.station.city} {result.station.postcode}
-                      </Text>
-                      <Text style={styles.searchResultSubtitle}>{result.station.address}</Text>
-                    </View>
-                    <Text style={styles.searchResultPrice}>
-                      {displayPrice ? formatPrice(displayPrice.value) : 'Indispo'}
-                    </Text>
-                  </Pressable>
-                );
               })
             ) : (
               <Text style={styles.emptySearchText}>{t.topOverlay.noStation}</Text>
