@@ -5,14 +5,8 @@ import { useState } from 'react';
 import { Station } from '../lib/carburantsApi';
 import { CitySearchResult } from '../lib/citySearch';
 import { AppLanguage, copy } from '../lib/copy';
-import { formatPrice, formatTimestamp } from '../lib/format';
-import {
-  FuelFilterOptionKey,
-  FuelSelection,
-  FUEL_FILTER_OPTIONS,
-  getFuelSelectionLabel,
-  isFuelOptionActive,
-} from '../lib/fuels';
+import { formatTimestamp } from '../lib/format';
+import { FuelFilterOptionKey, FuelSelection, FUEL_FILTER_OPTIONS, isFuelOptionActive } from '../lib/fuels';
 import { SearchResultItem } from '../lib/searchTypes';
 import { DisplayPrice } from '../lib/stationDisplay';
 import { colors, shadows } from '../theme';
@@ -31,7 +25,6 @@ type TopOverlayProps = {
   onFocusCity: (city: CitySearchResult) => void;
   onFocusStation: (station: Station) => void;
   onRefresh: () => void;
-  priceRange: { max: number | null; min: number | null };
   searchResults: SearchResultItem[];
   searchText: string;
   stationsCount: number;
@@ -50,7 +43,6 @@ export function TopOverlay({
   onFocusCity,
   onFocusStation,
   onRefresh,
-  priceRange,
   searchResults,
   searchText,
   stationsCount,
@@ -62,7 +54,6 @@ export function TopOverlay({
   const isTablet = width < 900;
   const isPhone = width < 560;
   const t = copy[language];
-  const activeFuelLabel = getFuelSelectionLabel(activeFuel);
   const showMobileMenu = !isPhone || isMobileMenuOpen;
   const showFilters = !isPhone || isMobileMenuOpen;
   const showInfo = !isPhone || isMobileMenuOpen;
@@ -237,7 +228,7 @@ export function TopOverlay({
         ) : null}
 
         {showMobileMenu && (showFilters || showInfo) ? (
-          <View style={[styles.heroBody, isDesktop && styles.heroBodyDesktop]}>
+          <View style={styles.heroBody}>
             <View style={styles.heroMain}>
               {showFilters ? (
                 <ScrollView contentContainerStyle={styles.filterRow} horizontal showsHorizontalScrollIndicator={false}>
@@ -281,16 +272,6 @@ export function TopOverlay({
                 </View>
               ) : null}
             </View>
-
-            {showInfo ? (
-              <View style={[styles.signalCard, isTablet && styles.signalCardResponsive, isPhone && styles.signalCardPhone]}>
-                <Text style={styles.signalLabel}>{t.topOverlay.bestPrice}</Text>
-                <Text style={[styles.signalPrice, isPhone && styles.signalPricePhone]}>
-                  {priceRange.min != null ? formatPrice(priceRange.min) : '--'}
-                </Text>
-                <Text style={styles.signalCaption}>{activeFuelLabel} dans la zone visible</Text>
-              </View>
-            ) : null}
           </View>
         ) : null}
       </View>
@@ -534,15 +515,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   heroBody: {
-    gap: 16,
     marginTop: 14,
   },
-  heroBodyDesktop: {
-    alignItems: 'flex-end',
-    flexDirection: 'row',
-  },
   heroMain: {
-    flex: 1,
+    width: '100%',
   },
   filterRow: {
     gap: 10,
@@ -598,42 +574,5 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 13,
     marginTop: 2,
-  },
-  signalCard: {
-    backgroundColor: '#F5E7C6',
-    borderColor: colors.border,
-    borderRadius: 22,
-    borderWidth: 1,
-    minHeight: 126,
-    padding: 18,
-    width: 250,
-  },
-  signalCardResponsive: {
-    width: '100%',
-  },
-  signalCardPhone: {
-    minHeight: 0,
-    padding: 16,
-  },
-  signalLabel: {
-    color: colors.subtleTextStrong,
-    fontFamily: 'SpaceGrotesk_500Medium',
-    fontSize: 12,
-  },
-  signalPrice: {
-    color: colors.text,
-    fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 34,
-    marginTop: 10,
-  },
-  signalPricePhone: {
-    fontSize: 30,
-  },
-  signalCaption: {
-    color: colors.subtleText,
-    fontFamily: 'SpaceGrotesk_400Regular',
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 10,
   },
 });

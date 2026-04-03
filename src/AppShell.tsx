@@ -319,7 +319,6 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
                 onFocusCity={focusCity}
                 onFocusStation={focusStation}
                 onRefresh={() => loadStations(region, activeFuel, 'manual')}
-                priceRange={priceRange}
                 searchResults={searchResults}
                 searchText={searchText}
                 stationsCount={renderedStationsCount}
