@@ -170,8 +170,10 @@ function createMarkerIcon({
   const fuelSize = compact ? 10 : 11;
   const dotSize = compact ? 8 : 10;
   const iconAnchorX = width / 2;
-  const iconAnchorY = compact ? 18 : 24;
+  const iconAnchorY = compact ? 24 : 30;
   const compactFuelRow = compact && !selected;
+  const tailSize = compact ? 8 : 10;
+  const tailOffset = compact ? -5 : -6;
 
   return L.divIcon({
     className: '',
@@ -188,10 +190,11 @@ function createMarkerIcon({
             }
           </div>
         </div>
+        <div style="width:${tailSize}px;height:${tailSize}px;background:${background};border-right:1px solid ${border};border-bottom:1px solid ${border};transform:rotate(45deg);margin-top:${tailOffset}px;box-shadow:4px 4px 10px rgba(184,169,143,0.08);"></div>
       </div>
     `,
     iconAnchor: [iconAnchorX, iconAnchorY],
-    iconSize: [width, height],
+    iconSize: [width, height + tailSize],
   });
 }
 

@@ -54,9 +54,16 @@ export function TopOverlay({
   const isTablet = width < 900;
   const isPhone = width < 560;
   const t = copy[language];
+  const normalizedSearchText = searchText.trim();
+  const searchPlaceholder = isPhone
+    ? language === 'fr'
+      ? 'Rechercher une station ou une ville'
+      : 'Search a station'
+    : t.topOverlay.searchPlaceholder;
   const showMobileMenu = !isPhone || isMobileMenuOpen;
   const showFilters = !isPhone || isMobileMenuOpen;
   const showInfo = !isPhone || isMobileMenuOpen;
+  const showSearchResults = normalizedSearchText.length >= 2 && (!isPhone || showMobileMenu);
 
   function toggleMobileMenu() {
     setIsMobileMenuOpen((currentValue) => {
@@ -74,26 +81,44 @@ export function TopOverlay({
     <View style={[styles.topPanel, isPhone && styles.topPanelPhone]}>
       <View style={[styles.heroCard, shadows.floating, isPhone && styles.heroCardPhone]}>
         <View style={[styles.navRow, isDesktop && styles.navRowDesktop, isPhone && styles.navRowPhone]}>
-          <View style={[styles.brandRow, isPhone && styles.brandRowPhone]}>
-            <BrandMark size={38} />
-            <Text style={[styles.brandName, isPhone && styles.brandNamePhone]}>PleinSpot</Text>
-          </View>
+          {!isPhone ? (
+            <View style={styles.brandRow}>
+              <BrandMark size={38} />
+              <Text style={styles.brandName}>PleinSpot</Text>
+            </View>
+          ) : null}
 
           {isPhone ? (
-            <Pressable onPress={toggleMobileMenu} style={styles.iconButton}>
-              {isMobileMenuOpen ? (
-                <X color={colors.subtleTextStrong} size={18} />
-              ) : (
-                <Menu color={colors.subtleTextStrong} size={18} />
-              )}
-            </Pressable>
+            <>
+              <View style={[styles.searchShell, styles.searchShellDesktop, styles.searchShellPhone]}>
+                <Search color={colors.subtleText} size={16} />
+                <TextInput
+                  autoCorrect={false}
+                  onChangeText={onChangeSearch}
+                  placeholder={searchPlaceholder}
+                  placeholderTextColor={colors.subtleText}
+                  selectionColor={colors.sun}
+                  style={styles.searchInput}
+                  value={searchText}
+                />
+              </View>
+
+              <Pressable onPress={toggleMobileMenu} style={styles.iconButton}>
+                {isMobileMenuOpen ? (
+                  <X color={colors.subtleTextStrong} size={18} />
+                ) : (
+                  <Menu color={colors.subtleTextStrong} size={18} />
+                )}
+              </Pressable>
+            </>
           ) : (
             <>
               <View style={[styles.searchShell, isDesktop && styles.searchShellDesktop]}>
                 <Search color={colors.subtleText} size={16} />
                 <TextInput
+                  autoCorrect={false}
                   onChangeText={onChangeSearch}
-                  placeholder={t.topOverlay.searchPlaceholder}
+                  placeholder={searchPlaceholder}
                   placeholderTextColor={colors.subtleText}
                   selectionColor={colors.sun}
                   style={styles.searchInput}
@@ -122,18 +147,6 @@ export function TopOverlay({
 
         {isPhone && isMobileMenuOpen ? (
           <View style={styles.mobileMenuContent}>
-            <View style={styles.searchShell}>
-              <Search color={colors.subtleText} size={16} />
-              <TextInput
-                onChangeText={onChangeSearch}
-                placeholder={t.topOverlay.searchPlaceholder}
-                placeholderTextColor={colors.subtleText}
-                selectionColor={colors.sun}
-                style={styles.searchInput}
-                value={searchText}
-              />
-            </View>
-
             <View style={[styles.navActions, styles.navActionsPhone, styles.mobileMenuActions]}>
               <Pressable onPress={() => setIsSettingsOpen((value) => !value)} style={styles.iconButton}>
                 <Settings2 color={colors.subtleTextStrong} size={16} />
@@ -178,7 +191,7 @@ export function TopOverlay({
           </View>
         ) : null}
 
-        {searchText.length > 0 && showMobileMenu ? (
+        {showSearchResults ? (
           <View style={[styles.searchResults, shadows.card]}>
             {searchResults.length > 0 ? (
               searchResults.map((result, index) => {
@@ -312,23 +325,21 @@ const styles = StyleSheet.create({
   navRowPhone: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 10,
   },
   brandRow: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
   },
-  brandRowPhone: {
-    gap: 10,
-  },
   brandName: {
     color: colors.text,
     fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: 22,
   },
-  brandNamePhone: {
-    fontSize: 18,
+  searchShellPhone: {
+    flex: 1,
+    minWidth: 0,
   },
   searchShell: {
     alignItems: 'center',
@@ -359,7 +370,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   mobileMenuContent: {
-    gap: 12,
     marginTop: 12,
   },
   mobileMenuActions: {
