@@ -450,12 +450,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     alignSelf: 'center',
     maxWidth: 1380,
-    paddingBottom: 18,
+    paddingBottom: 10,
     paddingHorizontal: 16,
     width: '100%',
   },
   bottomPanelDesktop: {
-    paddingBottom: 26,
+    paddingBottom: 14,
     paddingHorizontal: 20,
   },
   bottomPanelContent: {

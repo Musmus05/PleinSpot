@@ -33,7 +33,7 @@ export function SummaryCard({
   const isDesktop = width >= 1080;
   const isPhone = width < 560;
   const t = copy[language];
-  const listViewportHeight = isPhone ? Math.min(height * 0.34, 320) : undefined;
+  const listViewportHeight = isPhone ? Math.min(height * 0.22, 180) : undefined;
   const resultsToggleLabel = language === 'fr' ? 'Résultats' : 'Results';
 
   return (
@@ -64,7 +64,7 @@ export function SummaryCard({
             <ScrollView
               style={[styles.railViewport, isPhone && { maxHeight: listViewportHeight }]}
               contentContainerStyle={[styles.rail, isDesktop ? styles.railDesktop : styles.railMobile]}
-              horizontal={isDesktop}
+              horizontal={false}
               showsHorizontalScrollIndicator={false}
               showsVerticalScrollIndicator={isPhone}
             >
@@ -118,15 +118,15 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     borderWidth: 1,
     maxWidth: 900,
-    padding: 18,
+    padding: 12,
     width: '100%',
   },
   cardPhone: {
-    borderRadius: 24,
-    padding: 14,
+    borderRadius: 22,
+    padding: 12,
   },
   cardDesktop: {
-    width: 820,
+    width: '100%',
   },
   header: {
     alignItems: 'center',
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
   },
   badgeText: {
     color: colors.subtleText,
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 7,
   },
   collapseButtonText: {
     color: colors.subtleTextStrong,
@@ -171,8 +171,8 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 18,
-    marginTop: 14,
+    fontSize: 16,
+    marginTop: 8,
   },
   expandedContent: {
     minHeight: 0,
@@ -183,31 +183,34 @@ const styles = StyleSheet.create({
   subtitle: {
     color: colors.subtleText,
     fontFamily: 'SpaceGrotesk_400Regular',
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: 8,
-    maxWidth: 420,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 6,
+    maxWidth: 360,
   },
   rail: {
-    gap: 14,
-    paddingTop: 18,
+    gap: 10,
+    paddingTop: 10,
   },
   railViewport: {
     minHeight: 0,
   },
   railMobile: {
-    paddingTop: 16,
+    paddingTop: 12,
   },
   railDesktop: {
-    justifyContent: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
   },
   stationCard: {
     backgroundColor: colors.surfaceRaised,
     borderColor: colors.border,
-    borderRadius: 22,
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 18,
-    width: 238,
+    flex: 1,
+    minWidth: 0,
+    padding: 14,
   },
   stationCardMobile: {
     width: '100%',
@@ -224,14 +227,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFF0CC',
     borderRadius: 999,
-    height: 30,
+    height: 26,
     justifyContent: 'center',
-    width: 30,
+    width: 26,
   },
   rankText: {
     color: colors.textOnLight,
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 13,
+    fontSize: 12,
   },
   distance: {
     color: colors.mint,
@@ -241,8 +244,8 @@ const styles = StyleSheet.create({
   price: {
     color: colors.text,
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 28,
-    marginTop: 18,
+    fontSize: 22,
+    marginTop: 10,
   },
   pricePhone: {
     fontSize: 24,
@@ -250,25 +253,25 @@ const styles = StyleSheet.create({
   fuel: {
     color: colors.sun,
     fontFamily: 'SpaceGrotesk_500Medium',
-    fontSize: 13,
-    marginTop: 5,
+    fontSize: 12,
+    marginTop: 4,
   },
   separator: {
     backgroundColor: colors.border,
     height: 1,
-    marginVertical: 16,
+    marginVertical: 12,
   },
   city: {
     color: colors.text,
     fontFamily: 'SpaceGrotesk_700Bold',
-    fontSize: 15,
+    fontSize: 14,
   },
   address: {
     color: colors.subtleText,
     fontFamily: 'SpaceGrotesk_400Regular',
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 8,
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 6,
   },
   emptyState: {
     backgroundColor: colors.surfaceRaised,
