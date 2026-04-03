@@ -5,14 +5,14 @@ import { Clock3, Coffee, MapPin, Navigation, ShieldCheck, ShoppingBag, Sparkles,
 import { Station } from '../lib/carburantsApi';
 import { AppLanguage, copy } from '../lib/copy';
 import { formatDistanceLabel, formatPrice, formatTimestamp, getDistanceInKm } from '../lib/format';
-import { FuelFilter, FUEL_OPTIONS } from '../lib/fuels';
+import { FuelSelection, FUEL_OPTIONS } from '../lib/fuels';
 import { getStationBrand } from '../lib/stationBrand';
 import { fetchStationOfficialDetails, StationOfficialDetails } from '../lib/stationOfficialDetails';
 import { getDisplayPrice } from '../lib/stationDisplay';
 import { colors, shadows } from '../theme';
 
 type StationSheetProps = {
-  activeFuel: FuelFilter;
+  activeFuel: FuelSelection;
   language: AppLanguage;
   onClose: () => void;
   onOpenDirections: () => void;
@@ -147,7 +147,7 @@ export function StationSheet({
                   <View style={styles.compareFuelRow}>
                     <View style={[styles.compareFuelDot, { backgroundColor: card.fuel.accent }]} />
                     <Text style={styles.dynamicLabel}>{card.fuel.label}</Text>
-                    {activeFuel !== 'all' && activeFuel === card.fuel.key ? (
+                    {activeFuel.length > 0 && activeFuel.includes(card.fuel.key) ? (
                       <View style={styles.compareActiveBadge}>
                         <Text style={styles.compareActiveBadgeText}>{t.stationSheet.currentFuel}</Text>
                       </View>
@@ -230,8 +230,8 @@ export function StationSheet({
           {FUEL_OPTIONS.map((fuel) => {
             const price = station.prices[fuel.key];
             const highlight =
-              (activeFuel !== 'all' && activeFuel === fuel.key) ||
-              (activeFuel === 'all' && getDisplayPrice(station, activeFuel)?.fuelKey === fuel.key);
+              (activeFuel.length > 0 && activeFuel.includes(fuel.key)) ||
+              (activeFuel.length === 0 && getDisplayPrice(station, activeFuel)?.fuelKey === fuel.key);
 
             return (
               <View
@@ -316,15 +316,15 @@ function ComparisonBar({
 function getComparisonCardData(
   station: Station,
   visibleStations: Station[],
-  activeFuel: FuelFilter,
+  activeFuel: FuelSelection,
 ): ComparisonCardData[] {
   const orderedFuels = FUEL_OPTIONS.filter((fuel) => station.prices[fuel.key]).sort((left, right) => {
-    if (activeFuel !== 'all') {
-      if (left.key === activeFuel) {
+    if (activeFuel.length > 0) {
+      if (activeFuel.includes(left.key) && !activeFuel.includes(right.key)) {
         return -1;
       }
 
-      if (right.key === activeFuel) {
+      if (activeFuel.includes(right.key) && !activeFuel.includes(left.key)) {
         return 1;
       }
     }

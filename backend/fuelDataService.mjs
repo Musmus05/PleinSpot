@@ -46,9 +46,9 @@ export async function fetchStationsInRegion({
 
   const visibleStations = stations.filter((station) => isStationVisible(station, region));
   const filteredByFuel =
-    fuelFilter === 'all'
+    fuelFilter.length === 0
       ? visibleStations
-      : visibleStations.filter((station) => station.prices[fuelFilter] != null);
+      : visibleStations.filter((station) => fuelFilter.some((fuelKey) => station.prices[fuelKey] != null));
 
   const response = {
     fetchedAt,
@@ -203,13 +203,13 @@ function sortStationsByFuel(stations, fuelFilter) {
 }
 
 function getComparablePrice(station, fuelFilter) {
-  if (fuelFilter !== 'all') {
-    return station.prices[fuelFilter]?.value ?? null;
-  }
-
   let cheapest = null;
 
   for (const fuelKey of FUEL_OPTIONS) {
+    if (fuelFilter.length > 0 && !fuelFilter.includes(fuelKey)) {
+      continue;
+    }
+
     const value = station.prices[fuelKey]?.value;
 
     if (value == null) {

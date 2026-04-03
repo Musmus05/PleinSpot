@@ -37,7 +37,7 @@ const server = createServer(async (request, response) => {
         const longitude = Number(url.searchParams.get('longitude'));
         const latitudeDelta = Number(url.searchParams.get('latitudeDelta'));
         const longitudeDelta = Number(url.searchParams.get('longitudeDelta'));
-        const fuelFilter = url.searchParams.get('fuelFilter') || 'all';
+        const fuelFilter = parseFuelFilter(url.searchParams.get('fuelFilter'));
         const limit = Number(url.searchParams.get('limit') || 220);
         const forceRefresh = url.searchParams.get('forceRefresh') === '1';
 
@@ -302,4 +302,15 @@ function mapCityResult(entry, index) {
     },
     subtitle,
   };
+}
+
+function parseFuelFilter(value) {
+  if (!value || value === 'all') {
+    return [];
+  }
+
+  return value
+    .split(',')
+    .map((fuelKey) => fuelKey.trim())
+    .filter(Boolean);
 }

@@ -20,7 +20,8 @@ import { fetchStationsInRegion, Station } from './lib/carburantsApi';
 import { CitySearchResult, searchCities } from './lib/citySearch';
 import { AppLanguage, copy } from './lib/copy';
 import { formatMarkerPrice } from './lib/format';
-import { FUEL_META, FuelFilter } from './lib/fuels';
+import { FUEL_META, FuelFilterOptionKey, FuelSelection, toggleFuelSelection } from './lib/fuels';
+import { getRenderableStations } from './lib/mapMarkerLayout';
 import { SearchResultItem } from './lib/searchTypes';
 import { getDisplayPrice, getPriceRange, getSearchResults, getSortedStations } from './lib/stationDisplay';
 import { colors } from './theme';
@@ -42,7 +43,7 @@ type AppShellProps = {
 };
 
 export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapComponent }: AppShellProps) {
-  const { width } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
   const [fontsLoaded] = useFonts({
     SpaceGrotesk_400Regular,
     SpaceGrotesk_500Medium,
@@ -51,7 +52,7 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
   const [region, setRegion] = useState(DEFAULT_REGION);
   const [stations, setStations] = useState<Station[]>([]);
   const [selectedStationId, setSelectedStationId] = useState<number | null>(null);
-  const [activeFuel, setActiveFuel] = useState<FuelFilter>('all');
+  const [activeFuel, setActiveFuel] = useState<FuelSelection>([]);
   const [language, setLanguage] = useState<AppLanguage>('fr');
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -73,9 +74,17 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
   const topStations = getSortedStations(stations, activeFuel).slice(0, 3);
   const isDesktop = width >= 1080;
   const stationLimit = width < 560 ? 70 : width < 900 ? 120 : 220;
+  const renderedStationsCount = getRenderableStations({
+    compact: width < 560,
+    mapHeight: height,
+    mapWidth: width,
+    region,
+    selectedStationId,
+    stations,
+  }).length;
   const t = copy[language];
 
-  const loadStations = useEffectEvent(async (nextRegion: MapRegion, fuelFilter: FuelFilter, mode: RefreshMode) => {
+  const loadStations = useEffectEvent(async (nextRegion: MapRegion, fuelFilter: FuelSelection, mode: RefreshMode) => {
     const currentRequestId = requestIdRef.current + 1;
     requestIdRef.current = currentRequestId;
 
@@ -231,6 +240,10 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
     await Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${destination}`);
   }
 
+  function handleChangeFuel(optionKey: FuelFilterOptionKey) {
+    setActiveFuel((currentSelection) => toggleFuelSelection(currentSelection, optionKey));
+  }
+
   if (!fontsLoaded) {
     return (
       <SafeAreaProvider>
@@ -300,7 +313,7 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
                 language={language}
                 lastSyncAt={lastCheckAt ?? lastSnapshotAt}
                 onCenterUser={centerOnLocation}
-                onChangeFuel={setActiveFuel}
+                onChangeFuel={handleChangeFuel}
                 onChangeLanguage={setLanguage}
                 onChangeSearch={setSearchText}
                 onFocusCity={focusCity}
@@ -309,7 +322,7 @@ export function AppShell({ autoLocateOnMount = true, fetchStations, StationMapCo
                 priceRange={priceRange}
                 searchResults={searchResults}
                 searchText={searchText}
-                stationsCount={stations.length}
+                stationsCount={renderedStationsCount}
               />
             </View>
 

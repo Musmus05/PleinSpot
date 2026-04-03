@@ -1,7 +1,7 @@
 import { unzipSync } from 'fflate';
 import { XMLParser } from 'fast-xml-parser';
 
-import { FuelFilter, FuelKey, FUEL_OPTIONS } from './fuels';
+import { FuelKey, FuelSelection, FUEL_OPTIONS, matchesFuelSelection } from './fuels';
 
 const API_URL = 'https://donnees.roulez-eco.fr/opendata/instantane';
 const CACHE_TTL_MS = 60 * 1000;
@@ -78,7 +78,7 @@ export type Station = {
 
 type FetchStationsOptions = {
   forceRefresh?: boolean;
-  fuelFilter: FuelFilter;
+  fuelFilter: FuelSelection;
   limit?: number;
   region: {
     latitude: number;
@@ -107,9 +107,9 @@ export async function fetchStationsInRegion({
   const { fetchedAt, stations } = await getCachedStations(forceRefresh);
   const visibleStations = stations.filter((station) => isStationVisible(station, region));
   const filteredByFuel =
-    fuelFilter === 'all'
+    fuelFilter.length === 0
       ? visibleStations
-      : visibleStations.filter((station) => station.prices[fuelFilter] != null);
+      : visibleStations.filter((station) => fuelFilter.some((fuelKey) => station.prices[fuelKey] != null));
 
   return {
     fetchedAt,
@@ -255,7 +255,7 @@ function mapFuelNameToKey(name: string): FuelKey | null {
   }
 }
 
-function sortStationsByFuel(stations: Station[], fuelFilter: FuelFilter) {
+function sortStationsByFuel(stations: Station[], fuelFilter: FuelSelection) {
   return [...stations].sort((left, right) => {
     const leftPrice = getComparablePrice(left, fuelFilter);
     const rightPrice = getComparablePrice(right, fuelFilter);
@@ -276,14 +276,14 @@ function sortStationsByFuel(stations: Station[], fuelFilter: FuelFilter) {
   });
 }
 
-function getComparablePrice(station: Station, fuelFilter: FuelFilter) {
-  if (fuelFilter !== 'all') {
-    return station.prices[fuelFilter]?.value ?? null;
-  }
-
+function getComparablePrice(station: Station, fuelFilter: FuelSelection) {
   let cheapest: number | null = null;
 
   for (const fuel of FUEL_OPTIONS) {
+    if (!matchesFuelSelection(fuelFilter, fuel.key)) {
+      continue;
+    }
+
     const value = station.prices[fuel.key]?.value;
 
     if (value == null) {

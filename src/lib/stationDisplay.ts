@@ -1,5 +1,5 @@
 import { Station } from './carburantsApi';
-import { FuelFilter, FUEL_OPTIONS, FuelKey } from './fuels';
+import { FuelKey, FuelSelection, FUEL_OPTIONS, matchesFuelSelection } from './fuels';
 
 export type DisplayPrice = {
   fuelKey: FuelKey;
@@ -7,22 +7,14 @@ export type DisplayPrice = {
   value: number;
 };
 
-export function getDisplayPrice(station: Station, activeFuel: FuelFilter): DisplayPrice | null {
-  if (activeFuel !== 'all') {
-    const fuelPrice = station.prices[activeFuel];
-
-    return fuelPrice
-      ? {
-          fuelKey: activeFuel,
-          updatedAt: fuelPrice.updatedAt,
-          value: fuelPrice.value,
-        }
-      : null;
-  }
-
+export function getDisplayPrice(station: Station, activeFuel: FuelSelection): DisplayPrice | null {
   let cheapest: DisplayPrice | null = null;
 
   for (const fuel of FUEL_OPTIONS) {
+    if (!matchesFuelSelection(activeFuel, fuel.key)) {
+      continue;
+    }
+
     const candidate = station.prices[fuel.key];
 
     if (!candidate) {
@@ -41,7 +33,7 @@ export function getDisplayPrice(station: Station, activeFuel: FuelFilter): Displ
   return cheapest;
 }
 
-export function getSortedStations(stations: Station[], activeFuel: FuelFilter): Station[] {
+export function getSortedStations(stations: Station[], activeFuel: FuelSelection): Station[] {
   return [...stations].sort((left, right) => {
     const leftPrice = getDisplayPrice(left, activeFuel);
     const rightPrice = getDisplayPrice(right, activeFuel);
@@ -62,7 +54,7 @@ export function getSortedStations(stations: Station[], activeFuel: FuelFilter): 
   });
 }
 
-export function getSearchResults(stations: Station[], query: string, activeFuel: FuelFilter): Station[] {
+export function getSearchResults(stations: Station[], query: string, activeFuel: FuelSelection): Station[] {
   if (!query) {
     return [];
   }
@@ -77,7 +69,7 @@ export function getSearchResults(stations: Station[], query: string, activeFuel:
   ).slice(0, 6);
 }
 
-export function getPriceRange(stations: Station[], activeFuel: FuelFilter) {
+export function getPriceRange(stations: Station[], activeFuel: FuelSelection) {
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
 

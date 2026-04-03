@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 
+import { getRenderableStations } from '../lib/mapMarkerLayout';
 import { colors } from '../theme';
 import { StationMapProps } from './StationMap.types';
 
@@ -69,8 +70,16 @@ export function StationMap({
   userLocation,
   viewportToken,
 }: StationMapProps) {
-  const { width } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
   const isPhone = width < 560;
+  const visibleStations = getRenderableStations({
+    compact: isPhone,
+    mapHeight: height,
+    mapWidth: width,
+    region,
+    selectedStationId,
+    stations,
+  });
 
   return (
     <View style={styles.wrapper}>
@@ -114,7 +123,7 @@ export function StationMap({
           </>
         ) : null}
 
-        {stations.map((station) => {
+        {visibleStations.map((station) => {
           const marker = getMarkerPresentation(station);
 
           return (

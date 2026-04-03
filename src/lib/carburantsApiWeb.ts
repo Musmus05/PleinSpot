@@ -1,9 +1,9 @@
-import { FuelFilter } from './fuels';
+import { FuelSelection, getFuelSelectionQueryValue } from './fuels';
 import { Station } from './carburantsApi';
 
 type FetchStationsOptions = {
   forceRefresh?: boolean;
-  fuelFilter: FuelFilter;
+  fuelFilter: FuelSelection;
   limit?: number;
   region: {
     latitude: number;
@@ -33,8 +33,9 @@ export async function fetchStationsInRegionWeb({
   limit = 220,
   region,
 }: FetchStationsOptions) {
+  const fuelFilterValue = getFuelSelectionQueryValue(fuelFilter);
   const cacheKey = getStationsCacheKey({
-    fuelFilter,
+    fuelFilter: fuelFilterValue,
     limit,
     region,
   });
@@ -55,7 +56,7 @@ export async function fetchStationsInRegionWeb({
 
   const searchParams = new URLSearchParams({
     forceRefresh: forceRefresh ? '1' : '0',
-    fuelFilter,
+    fuelFilter: fuelFilterValue,
     latitude: String(region.latitude),
     latitudeDelta: String(region.latitudeDelta),
     limit: String(limit),

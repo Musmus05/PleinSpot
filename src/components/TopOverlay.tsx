@@ -6,20 +6,26 @@ import { Station } from '../lib/carburantsApi';
 import { CitySearchResult } from '../lib/citySearch';
 import { AppLanguage, copy } from '../lib/copy';
 import { formatPrice, formatTimestamp } from '../lib/format';
-import { FuelFilter, FUEL_FILTER_OPTIONS } from '../lib/fuels';
+import {
+  FuelFilterOptionKey,
+  FuelSelection,
+  FUEL_FILTER_OPTIONS,
+  getFuelSelectionLabel,
+  isFuelOptionActive,
+} from '../lib/fuels';
 import { SearchResultItem } from '../lib/searchTypes';
 import { DisplayPrice } from '../lib/stationDisplay';
 import { colors, shadows } from '../theme';
 import { BrandMark } from './BrandMark';
 
 type TopOverlayProps = {
-  activeFuel: FuelFilter;
+  activeFuel: FuelSelection;
   getStationDisplayPrice: (station: Station) => DisplayPrice | null;
   isRefreshing: boolean;
   language: AppLanguage;
   lastSyncAt: string | null;
   onCenterUser: () => void;
-  onChangeFuel: (fuel: FuelFilter) => void;
+  onChangeFuel: (fuel: FuelFilterOptionKey) => void;
   onChangeLanguage: (language: AppLanguage) => void;
   onChangeSearch: (value: string) => void;
   onFocusCity: (city: CitySearchResult) => void;
@@ -56,7 +62,7 @@ export function TopOverlay({
   const isTablet = width < 900;
   const isPhone = width < 560;
   const t = copy[language];
-  const activeFuelLabel = FUEL_FILTER_OPTIONS.find((option) => option.key === activeFuel)?.label ?? 'Tout voir';
+  const activeFuelLabel = getFuelSelectionLabel(activeFuel);
   const showMobileMenu = !isPhone || isMobileMenuOpen;
   const showFilters = !isPhone || isMobileMenuOpen;
   const showInfo = !isPhone || isMobileMenuOpen;
@@ -236,7 +242,7 @@ export function TopOverlay({
               {showFilters ? (
                 <ScrollView contentContainerStyle={styles.filterRow} horizontal showsHorizontalScrollIndicator={false}>
                   {FUEL_FILTER_OPTIONS.map((option) => {
-                    const isActive = option.key === activeFuel;
+                    const isActive = isFuelOptionActive(activeFuel, option.key);
 
                     return (
                       <Pressable
