@@ -7,7 +7,7 @@
     "dev": "concurrently \"npm run backend\" \"npm run web\"",
     "backend": "node ./backend/server.mjs",
     "build": "npm run build:web",
-    "build:web": "expo export --platform web",
+    "build:web": "expo export --platform web && node ./scripts/patch-web-html.mjs",
     "heroku-postbuild": "npm run build:web",
     "web": "expo start --web"
   },
