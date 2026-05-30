@@ -56,6 +56,9 @@ Desktop.ini
 # generated public data
 public/fuel-stations.json
 
+# local generated documents and reports
+output/
+
 # local env files
 .env
 .env.*

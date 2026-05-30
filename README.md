@@ -1,81 +1,181 @@
 # PleinSpot
 
-PleinSpot est une application web de comparaison de prix des carburants.
-Le projet contient :
+PleinSpot est une application web qui aide à repérer les stations-service autour de soi et à comparer rapidement les prix des carburants.
 
-- un frontend Expo Web / React
-- un backend Node.js qui recupere les donnees publiques officielles
+Le projet a été réalisé comme prototype fonctionnel dans le cadre d’un projet citoyen : l’objectif est de rendre une information publique plus lisible et plus utile pour les personnes qui surveillent leur budget carburant au quotidien.
 
-## Demarrage local
+## Fonctionnalités
 
-Installation :
+- Carte interactive des stations-service.
+- Recherche par ville ou par station.
+- Filtrage par carburant : Gazole, SP95, E10, SP98, E85 et GPLc.
+- Comparaison des prix dans la zone visible.
+- Mise en avant des stations les moins chères.
+- Fiche détaillée d’une station : adresse, carburants, prix, services, horaires si disponibles et itinéraire.
+- Géolocalisation côté utilisateur, avec autorisation du navigateur.
+- Backend local qui récupère et prépare les données publiques officielles.
+
+## Technologies utilisées
+
+- **React** et **Expo Web** pour l’interface.
+- **React Native Web** pour partager une logique d’interface compatible web.
+- **Node.js** pour le backend.
+- **TypeScript** pour le frontend.
+- **JavaScript ES Modules** pour le backend.
+- **Leaflet** et **React-Leaflet** pour la carte.
+- **Expo Location** pour la géolocalisation.
+- **fast-xml-parser** pour lire le flux XML des carburants.
+- **fflate** pour décompresser les données officielles.
+- **Heroku** compatible via `Procfile` et `heroku-postbuild`.
+
+## Sources de données
+
+Le jeu de données officiel est **Prix des carburants en France - Flux instantané - v2**, publié sur la plateforme du ministère de l’Économie :
+
+- Documentation / console API : <https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/api/?flg=fr-fr>
+- Endpoint Explore API 2.1 associé : <https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records/>
+
+Dans le code, PleinSpot consomme directement le flux instantané officiel utilisé comme source brute :
+
+- `https://donnees.roulez-eco.fr/opendata/instantane`
+
+Ce flux fournit une archive contenant les informations des stations et les prix déclarés. Le backend la télécharge, la décompresse, lit le XML, normalise les stations, puis renvoie seulement les résultats utiles à la zone affichée.
+
+La recherche de communes utilise aussi l’API publique suivante :
+
+- `https://geo.api.gouv.fr/communes`
+
+## Architecture
+
+```text
+.
+|-- backend/
+|   |-- server.mjs           # Serveur HTTP, routes API et fichiers statiques
+|   `-- fuelDataService.mjs  # Récupération, cache et filtrage des données carburant
+|-- src/
+|   |-- components/          # Carte, fiche station, résumé et interface
+|   |-- lib/                 # API, formatage, recherche, carburants, affichage
+|   |-- types/               # Types partagés
+|   `-- AppShell.tsx         # Logique principale de l’application
+|-- assets/                  # Logo et ressources graphiques
+|-- public/                  # Fichiers publics web
+|-- scripts/                 # Scripts de build
+|-- App.tsx
+|-- index.ts
+|-- package.json
+`-- Procfile
+```
+
+## Prérequis
+
+- Node.js 20 ou supérieur.
+- npm.
+
+## Installation
 
 ```bash
 npm install
 ```
 
-Mode developpement complet :
+## Lancement en développement
+
+Pour lancer le frontend Expo Web et le backend en même temps :
 
 ```bash
 npm run dev
 ```
 
-- frontend Expo Web : `http://localhost:8081`
-- backend Node : `http://localhost:4000`
+Par défaut :
 
-Si tu veux seulement le backend :
+- frontend Expo Web : <http://localhost:8081>
+- backend Node.js : <http://localhost:4000>
+
+Pour lancer seulement le backend :
 
 ```bash
-npm start
+npm run backend
 ```
 
-Si tu veux seulement exporter le frontend web :
+Pour lancer seulement le frontend :
+
+```bash
+npm run web
+```
+
+## Build web
 
 ```bash
 npm run build:web
 ```
 
-## Deploiement Heroku
+Le build web est généré dans `dist/`.
 
-Le projet est maintenant adapte a un deploiement Heroku simple :
+## Lancement en production locale
 
-- Heroku lance `npm start`
-- le backend ecoute automatiquement sur `process.env.PORT`
-- Heroku lance `heroku-postbuild`, qui genere le frontend dans `dist/`
-- le serveur Node sert ensuite les fichiers statiques de `dist/` et les routes API `/api/*`
+Après un build web :
 
-Fichiers utiles :
+```bash
+npm start
+```
 
-- [package.json](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/package.json)
-- [Procfile](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/Procfile)
-- [backend/server.mjs](/C:/Users/musta/OneDrive/Documents/Projets/Projet-station-essence/backend/server.mjs)
+Le serveur Node.js sert :
 
-Commande typique :
+- les fichiers statiques de `dist/`
+- les routes API sous `/api/*`
+
+Routes principales :
+
+- `GET /api/health`
+- `GET /api/stations`
+- `GET /api/cities?q=paris`
+
+## Variables d’environnement
+
+Le projet fonctionne sans clé API.
+
+Optionnellement, le frontend peut pointer vers un backend précis :
+
+```bash
+EXPO_PUBLIC_API_BASE_URL=http://localhost:4000
+```
+
+En production, les secrets ou variables sensibles doivent être configurés côté hébergeur, jamais ajoutés dans le code.
+
+## Déploiement Heroku
+
+Le dépôt est prêt pour un déploiement Heroku simple :
+
+- `Procfile` lance `npm start`.
+- `heroku-postbuild` génère le frontend web.
+- le serveur sert ensuite le build statique et les routes API.
+
+Exemple :
 
 ```bash
 heroku create
 git push heroku main
 ```
 
-Optionnel en local, si le frontend doit viser un autre backend :
+## Sécurité et confidentialité
+
+- Aucune clé API n’est nécessaire pour les sources utilisées actuellement.
+- Les données consommées sont publiques.
+- Les fichiers `.env` sont ignorés par Git.
+- La géolocalisation dépend de l’autorisation du navigateur et n’est pas stockée par l’application.
+- Le backend applique un cache pour limiter les appels répétés au flux officiel.
+
+Avant de rendre le dépôt public, il reste conseillé de vérifier :
 
 ```bash
-EXPO_PUBLIC_API_BASE_URL=http://localhost:4000
+git status
+git diff
 ```
 
-## Securite
+et de s’assurer qu’aucun fichier personnel, rapport, capture privée ou fichier `.env` n’est ajouté au commit.
 
-Controle effectue sur le depot :
+## Limites connues
 
-- aucune reference projet a Render n'a ete trouvee
-- aucune cle API, secret, token ou mot de passe n'a ete trouve dans les fichiers du projet
-- les fichiers `.env` sont ignores par Git via `.gitignore`
-- le backend consomme seulement des donnees publiques :
-  - `https://donnees.roulez-eco.fr/opendata/instantane`
-  - `https://geo.api.gouv.fr/communes`
-
-Points a connaitre :
-
-- publier le site ne diffuse pas d'information personnelle te concernant dans ce depot, d'apres les fichiers verifies
-- si tu ajoutes plus tard des variables sensibles, il faudra les stocker dans les Config Vars Heroku et pas dans le code
-- le site charge aussi certaines donnees publiques externes, donc les visiteurs peuvent contacter ces services publics directement depuis leur navigateur
+- Les prix dépendent de la fraîcheur des données déclarées par les stations.
+- Certaines stations peuvent ne pas renseigner tous les carburants, horaires ou services.
+- Le prototype doit encore être testé plus largement sur mobile.
+- Une page d’information utilisateur pourrait être ajoutée pour expliquer la source des données et leurs limites.
