@@ -704,7 +704,7 @@ function PleinSpot() {
       </View>
 
       <View pointerEvents="box-none" style={[styles.mobileFloating, { bottom: sheetHeight + 12 }]}>
-        <Text style={styles.mobileAttribution}>© IGN · © OpenStreetMap</Text>
+        <Text style={styles.mobileAttribution}>© OpenFreeMap · © OpenStreetMap</Text>
         <LocateButton compact isLocating={isLocating} label={t.app.locate} onPress={() => locateUser()} />
       </View>
 

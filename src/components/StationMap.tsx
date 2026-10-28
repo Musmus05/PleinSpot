@@ -2,7 +2,7 @@ import 'leaflet/dist/leaflet.css';
 
 import L from 'leaflet';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import { CircleMarker, MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import { StyleSheet, View } from 'react-native';
 
 import type { AppLanguage } from '../lib/copy';
@@ -12,6 +12,7 @@ import { getPriceChange, getPriceTier, isPriceStale, PriceChanges, PriceTier } f
 import type { LatLng, PriceStats, Station } from '../types/station';
 import type { MapRegion, MapView } from '../types/map';
 import { colors, fonts, motion, radius, shadows, tierColors } from '../theme';
+import { Basemap, BASEMAP_BACKGROUND } from './Basemap';
 
 export type MapPadding = { bottom: number; left: number; right: number; top: number };
 
@@ -42,11 +43,6 @@ type StationMapProps = {
   viewport: MapViewportRequest | null;
 };
 
-// Plan IGN v2 from the French Géoplateforme: open licence, no API key, made for France.
-const TILE_URL =
-  'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}';
-const TILE_ATTRIBUTION =
-  '&copy; <a href="https://www.ign.fr/">IGN</a> &middot; <a href="https://geoservices.ign.fr/">Géoplateforme</a>';
 const WORLD_BOUNDS = L.latLngBounds([-85, -180], [85, 180]);
 
 export function StationMap({
@@ -86,7 +82,7 @@ export function StationMap({
         style={styles.map}
         zoomControl={false}
       >
-        <TileLayer attribution={TILE_ATTRIBUTION} className="ps-tiles" maxNativeZoom={19} maxZoom={19} noWrap url={TILE_URL} />
+        <Basemap />
         <MapBehaviour
           compact={compact}
           onMapPress={onMapPress}
@@ -455,7 +451,7 @@ function injectMapStyles() {
 
   style.id = 'ps-map-styles';
   style.textContent = `
-.leaflet-container{background:#EEF0EC;font-family:${fonts.regular},system-ui,sans-serif;outline:none}
+.leaflet-container{background:${BASEMAP_BACKGROUND};font-family:${fonts.regular},system-ui,sans-serif;outline:none}
 .ps-tiles{filter:saturate(.55) brightness(1.04) contrast(.96)}
 .ps-marker-host{background:none;border:0}
 .ps-slat{position:absolute;left:0;bottom:0;transform:translate(-50%,-7px);display:flex;align-items:flex-start;padding:3px 6px 2px;border-radius:${radius.slat}px;font-family:${fonts.condensedBold},system-ui,sans-serif;font-size:16px;line-height:1.05;white-space:nowrap;font-variant-numeric:tabular-nums;box-shadow:${OUTLINE},${LIFT};cursor:pointer;transition:transform ${motion.duration} ${motion.easing};user-select:none}

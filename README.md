@@ -7,7 +7,7 @@ Le projet a été réalisé comme prototype fonctionnel dans le cadre d’un pro
 ## Fonctionnalités
 
 - **Prix en direct** : le serveur vérifie le flux officiel chaque minute et pousse chaque nouvelle publication aux applis ouvertes (Server-Sent Events). Les prix qui changent clignotent sur la carte et affichent leur écart (« ↓ 1,2 ct ») sans rechargement.
-- Carte interactive (fond Plan IGN) avec un prix par station présenté comme une latte de totem, coloré selon le tiers de prix de la zone affichée (vert / jaune / rouge), double filet sur le prix le plus bas.
+- Carte interactive (fond vectoriel épuré OpenFreeMap « Positron », sans relief) avec un prix par station présenté comme une latte de totem, coloré selon le tiers de prix de la zone affichée (vert / jaune / rouge), double filet sur le prix le plus bas.
 - Choix du carburant par son identifiant européen (carré B7, rond E10/E5/E85, losange LPG), avec le prix minimum de la zone pour chacun.
 - Statistiques de la zone (mini, moyenne, maxi, nombre de stations) et comparaison avec la moyenne nationale.
 - Liste triable par prix ou par distance, avec nom et enseigne des stations (OpenStreetMap), statut d’ouverture et ancienneté du prix.
@@ -22,7 +22,7 @@ Le projet a été réalisé comme prototype fonctionnel dans le cadre d’un pro
 
 - **React**, **Expo Web** et **React Native Web** pour l’interface.
 - **TypeScript** pour le frontend, **Node.js** (ES Modules, sans framework) pour le backend.
-- **Leaflet** et **React-Leaflet** pour la carte, avec le **Plan IGN** de la Géoplateforme (sans clé d’API).
+- **Leaflet** et **React-Leaflet** pour la carte, avec un fond vectoriel **OpenFreeMap** rendu par **MapLibre GL** (gratuit, sans clé ni compte), chargé après le premier affichage.
 - Police **Plus Jakarta Sans**, icônes issues de **Lucide** (intégrées une à une dans `src/components/icons.tsx`).
 - **fast-xml-parser** et **fflate** pour lire le flux officiel (côté serveur uniquement).
 - **Heroku** compatible via `Procfile` et `heroku-postbuild`.
@@ -44,7 +44,7 @@ Ce flux fournit une archive contenant les informations des stations et les prix 
 
 Le nom et l’enseigne des stations, absents du flux, viennent d’OpenStreetMap, qui porte l’identifiant officiel de 99,6 % des stations dans le tag `ref:FR:prix-carburants`. Le serveur télécharge chaque jour l’export de l’outil Osmose (497 Ko compressé) et fait la jointure sur cet identifiant. Données © contributeurs OpenStreetMap, licence ODbL : l’attribution est affichée dans l’application.
 
-La recherche de communes utilise l’API publique `https://geo.api.gouv.fr/communes` et le fond de carte provient du Plan IGN (`https://data.geopf.fr/wmts`).
+La recherche de communes utilise l’API publique `https://geo.api.gouv.fr/communes` et le fond de carte provient d’OpenFreeMap (`https://tiles.openfreemap.org/styles/positron`, données © OpenMapTiles, © OpenStreetMap).
 
 ## Architecture
 

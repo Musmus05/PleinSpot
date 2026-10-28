@@ -18,7 +18,7 @@ const SOURCES = [
     url: 'https://www.openstreetmap.org/copyright',
   },
   { label: 'geo.api.gouv.fr, communes', url: 'https://geo.api.gouv.fr/decoupage-administratif/communes' },
-  { label: 'Plan IGN, Géoplateforme', url: 'https://geoservices.ign.fr/services-geoplateforme-diffusion' },
+  { label: 'Fond de carte : OpenFreeMap, OpenMapTiles, OpenStreetMap', url: 'https://openfreemap.org' },
 ];
 
 export function AboutModal({ language, onClose, visible }: { language: AppLanguage; onClose: () => void; visible: boolean }) {

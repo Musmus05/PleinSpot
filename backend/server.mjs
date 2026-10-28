@@ -391,9 +391,13 @@ function buildContentSecurityPolicy(html) {
     "default-src 'self'",
     `script-src 'self' ${inlineScriptHashes} https://www.googletagmanager.com`,
     "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob: https://data.geopf.fr ${analytics}`,
+    // Basemap: OpenFreeMap vector tiles, OpenStreetMap raster tiles as the no-WebGL fallback.
+    `img-src 'self' data: blob: https://tiles.openfreemap.org https://tile.openstreetmap.org ${analytics}`,
     "font-src 'self' data:",
-    `connect-src 'self' ${apiOrigin} ${analytics}`.replace(/\s+/g, ' '),
+    `connect-src 'self' ${apiOrigin} https://tiles.openfreemap.org ${analytics}`.replace(/\s+/g, ' '),
+    // MapLibre parses tiles in workers created from blob: URLs.
+    "worker-src 'self' blob:",
+    "child-src 'self' blob:",
     "manifest-src 'self'",
     "frame-ancestors 'self'",
     "base-uri 'self'",
