@@ -1,32 +1,35 @@
-import { PlusJakartaSans_400Regular } from '@expo-google-fonts/plus-jakarta-sans/400Regular';
-import { PlusJakartaSans_600SemiBold } from '@expo-google-fonts/plus-jakarta-sans/600SemiBold';
-import { PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans/800ExtraBold';
+import { Barlow_400Regular } from '@expo-google-fonts/barlow/400Regular';
+import { Barlow_500Medium } from '@expo-google-fonts/barlow/500Medium';
+import { Barlow_600SemiBold } from '@expo-google-fonts/barlow/600SemiBold';
+import { BarlowCondensed_600SemiBold } from '@expo-google-fonts/barlow-condensed/600SemiBold';
+import { BarlowCondensed_700Bold } from '@expo-google-fonts/barlow-condensed/700Bold';
 import { useFonts } from 'expo-font';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AboutModal } from './components/AboutModal';
 import { BrandMark, Wordmark } from './components/BrandMark';
 import { FuelPicker } from './components/FuelPicker';
-import { ChevronDown, ChevronUp, CircleAlert, LocateFixed, RefreshCw, Star } from './components/icons';
+import { ChevronDown, ChevronUp, CircleAlert, LocateFixed, RefreshCw } from './components/icons';
 import { SearchBox } from './components/SearchBox';
 import { StationDetails } from './components/StationDetails';
 import { ListEntry, StationList } from './components/StationList';
 import { MapPadding, MapViewportRequest, StationMap } from './components/StationMap';
-import { IconButton } from './components/ui';
+import { Button, IconButton } from './components/ui';
 import { ZoneSummary } from './components/ZoneSummary';
 import { openConsentSettings, track } from './lib/analytics';
-import { fetchStation, fetchStationDetails, fetchStations } from './lib/api';
-import { formatStationName } from './lib/brands';
+import { fetchStation, fetchStations, subscribeToPriceUpdates } from './lib/api';
+import { getStationTitle } from './lib/brands';
 import { AppLanguage, copy } from './lib/copy';
-import { formatCount, formatPrice, formatRelativeTime, getDistanceInKm } from './lib/format';
+import { formatCount, formatPrice, formatPriceValue, formatRelativeTime, getDistanceInKm } from './lib/format';
 import { DEFAULT_FUEL, FUEL_META, FuelKey, isFuelKey } from './lib/fuels';
 import { readPreference, writePreference } from './lib/storage';
 import { isMapView, readUrlState, writeUrlState } from './lib/urlState';
-import { breakpoints, colors, fonts, radius, shadows, tierColors } from './theme';
+import { breakpoints, colors, fonts, motion, radius, shadows, tierColors, type } from './theme';
 import type { MapRegion, MapView } from './types/map';
-import type { CitySearchResult, LatLng, Station, StationDetails as StationDetailsData, StationsResponse } from './types/station';
+import type { PriceChange, PriceChanges } from './lib/pricing';
+import type { CitySearchResult, LatLng, Station, StationsResponse } from './types/station';
 
 const FRANCE_REGION: MapRegion = {
   latitude: 46.6,
@@ -35,8 +38,11 @@ const FRANCE_REGION: MapRegion = {
   longitudeDelta: 11,
 };
 const LOAD_DEBOUNCE_MS = 260;
-const DETAILS_PREFETCH_COUNT = 12;
 const NOTICE_DURATION_MS = 6000;
+const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
+// A price that moved stays marked as "just changed" for this long.
+const RECENT_CHANGE_MS = 30 * 60 * 1000;
+const CLOCK_TICK_MS = 30 * 1000;
 
 type SortMode = 'price' | 'distance';
 type LoadState = 'loading' | 'ready' | 'error';
@@ -53,16 +59,18 @@ export function AppShell() {
 
 function FontGate({ children }: { children: ReactNode }) {
   const [loaded, error] = useFonts({
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_800ExtraBold,
+    BarlowCondensed_600SemiBold,
+    BarlowCondensed_700Bold,
+    Barlow_400Regular,
+    Barlow_500Medium,
+    Barlow_600SemiBold,
   });
 
   if (!loaded && !error) {
     return (
       <View style={styles.splash}>
         <BrandMark size={72} />
-        <ActivityIndicator color={colors.brand} style={styles.splashSpinner} />
+        <ActivityIndicator color={colors.blue} style={styles.splashSpinner} />
       </View>
     );
   }
@@ -106,7 +114,6 @@ function PleinSpot() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [selected, setSelected] = useState<Station | null>(null);
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
-  const [details, setDetails] = useState<Record<number, StationDetailsData | null>>({});
   const [userLocation, setUserLocation] = useState<LatLng | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>('price');
@@ -115,9 +122,17 @@ function PleinSpot() {
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
   const [topOverlayHeight, setTopOverlayHeight] = useState(128);
   const [now, setNow] = useState(() => Date.now());
+  const [liveVersion, setLiveVersion] = useState<string | null>(null);
+  const [isLive, setIsLive] = useState(false);
+  const [recentChanges, setRecentChanges] = useState<PriceChanges>({});
+  const [liveMessage, setLiveMessage] = useState<string | null>(null);
   const forceRefreshRef = useRef(false);
+  const responseRef = useRef<StationsResponse | null>(null);
 
   const t = copy[language];
+  const languageRef = useRef(language);
+
+  languageRef.current = language;
   const isDesktop = width >= breakpoints.desktop;
   const sidebarWidth = width >= breakpoints.wide ? 440 : 400;
   const limit = isDesktop ? 200 : 120;
@@ -126,7 +141,7 @@ function PleinSpot() {
   const displayFuel = response?.fuel ?? fuel;
   const stats = response?.stats ?? null;
   const stations = response?.stations ?? [];
-  const bestStationId = stations.length > 1 ? stations[0].id : null;
+  const bestPrice = stats && stats.count > 1 ? stats.min : null;
 
   const tokenRef = useRef(0);
 
@@ -153,11 +168,25 @@ function PleinSpot() {
           limit,
           region,
           signal: controller.signal,
+          version: liveVersion,
         });
+        const previous = responseRef.current;
 
         forceRefreshRef.current = false;
+        responseRef.current = result;
         setResponse(result);
         setLoadState('ready');
+
+        // New official data for the same fuel: every price that differs really moved.
+        if (previous && previous.fuel === result.fuel && previous.fetchedAt !== result.fetchedAt) {
+          const changes = diffPrices(previous, result);
+          const count = Object.keys(changes).length;
+
+          if (count > 0) {
+            setRecentChanges((current) => ({ ...current, ...changes }));
+            setLiveMessage(copy[languageRef.current].live.changed(count));
+          }
+        }
       } catch {
         if (!controller.signal.aborted) {
           setLoadState('error');
@@ -173,7 +202,7 @@ function PleinSpot() {
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [fuel, limit, refreshKey, region]);
+  }, [fuel, limit, liveVersion, refreshKey, region]);
 
   // Keep the selected station in sync with fresh prices.
   useEffect(() => {
@@ -188,6 +217,20 @@ function PleinSpot() {
     }
   }, [response, selected]);
 
+  // Live prices: reload the visible area as soon as the server has a new official file.
+  useEffect(
+    () =>
+      subscribeToPriceUpdates({
+        onConnectionChange: setIsLive,
+        onUpdate: (update) => {
+          if (responseRef.current && update.fetchedAt && update.fetchedAt !== responseRef.current.fetchedAt) {
+            setLiveVersion(update.fetchedAt);
+          }
+        },
+      }),
+    [],
+  );
+
   // Deep link: /?station=123
   useEffect(() => {
     if (!initial.stationId) {
@@ -200,49 +243,36 @@ function PleinSpot() {
       }
 
       setSelected(result.station);
-      setDetails((current) => ({ ...current, [result.station.id]: result.details }));
       moveTo({ kind: 'region', region: regionAround(result.station.coordinates, 0.04) });
     });
   }, [initial.stationId, moveTo]);
 
-  // Names and brands for the first rows of the list.
-  const detailIds = useMemo(() => {
-    const ids = stations.slice(0, DETAILS_PREFETCH_COUNT).map((station) => station.id);
-
-    if (selected && !ids.includes(selected.id)) {
-      ids.push(selected.id);
-    }
-
-    return ids.filter((id) => !(id in details));
-  }, [details, selected, stations]);
-
-  useEffect(() => {
-    if (detailIds.length === 0) {
-      return;
-    }
-
-    let isCurrent = true;
-    const timeoutId = setTimeout(() => {
-      fetchStationDetails(detailIds).then((result) => {
-        if (isCurrent) {
-          setDetails((current) => ({ ...current, ...result }));
-        }
-      });
-    }, 350);
-
-    return () => {
-      isCurrent = false;
-      clearTimeout(timeoutId);
-    };
-  }, [detailIds]);
-
   // ----- Side effects: clock, persistence, URL, title -----------------------------------------
 
   useEffect(() => {
-    const intervalId = setInterval(() => setNow(Date.now()), 60 * 1000);
+    const intervalId = setInterval(() => setNow(Date.now()), CLOCK_TICK_MS);
 
     return () => clearInterval(intervalId);
   }, []);
+
+  // Forget changes once they are no longer news.
+  useEffect(() => {
+    setRecentChanges((current) => {
+      const kept = Object.entries(current).filter(([, change]) => now - change.at < RECENT_CHANGE_MS);
+
+      return kept.length === Object.keys(current).length ? current : Object.fromEntries(kept);
+    });
+  }, [now]);
+
+  useEffect(() => {
+    if (!liveMessage) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => setLiveMessage(null), NOTICE_DURATION_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, [liveMessage]);
 
   useEffect(() => {
     writePreference('fuel', fuel);
@@ -275,7 +305,7 @@ function PleinSpot() {
     }
 
     const price = selected?.prices[displayFuel];
-    const name = selected ? formatStationName(details[selected.id]?.name) ?? selected.city : null;
+    const name = selected ? getStationTitle(selected) : null;
 
     document.title =
       selected && price
@@ -283,7 +313,7 @@ function PleinSpot() {
         : language === 'fr'
           ? 'PleinSpot — Prix des carburants les moins chers autour de vous'
           : 'PleinSpot — The cheapest fuel prices near you';
-  }, [details, displayFuel, language, selected]);
+  }, [displayFuel, language, selected]);
 
   useEffect(() => {
     if (!notice) {
@@ -440,7 +470,8 @@ function PleinSpot() {
 
   const selectedRank = getRank(selected, stations, displayFuel);
   const selectedDistance = selected && userLocation ? getDistanceInKm(userLocation, selected.coordinates) : null;
-  const dataUpdated = response ? formatRelativeTime(response.fetchedAt, language, now) : null;
+  const dataUpdated = response ? formatRelativeTime(response.publishedAt, language, now) : null;
+  const fuelLabel = FUEL_META[displayFuel].label[language];
 
   // ----- Rendering ----------------------------------------------------------------------------
 
@@ -448,6 +479,7 @@ function PleinSpot() {
     <View style={styles.listHeader}>
       {response && stats ? (
         <ZoneSummary
+          distribution={response.distribution}
           fuel={displayFuel}
           language={language}
           national={response.national}
@@ -458,10 +490,10 @@ function PleinSpot() {
       ) : null}
 
       {loadState === 'error' && !response ? (
-        <ErrorCard language={language} onRetry={retry} />
+        <ErrorMessage language={language} onRetry={retry} />
       ) : response && stations.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>{t.zone.emptyTitle(FUEL_META[displayFuel].label[language])}</Text>
+        <View style={styles.empty}>
+          <Text style={styles.emptyTitle}>{t.zone.emptyTitle(fuelLabel)}</Text>
           <Text style={styles.emptyBody}>{t.zone.emptyBody}</Text>
         </View>
       ) : null}
@@ -486,8 +518,8 @@ function PleinSpot() {
 
   const stationList = (
     <StationList
-      bestStationId={bestStationId}
-      details={details}
+      bestPrice={bestPrice}
+      changes={recentChanges}
       entries={entries}
       fuel={displayFuel}
       header={listHeader}
@@ -502,8 +534,9 @@ function PleinSpot() {
 
   const stationDetails = selected ? (
     <StationDetails
-      details={details[selected.id]}
+      changes={recentChanges}
       distanceKm={selectedDistance}
+      distribution={response?.distribution ?? null}
       fuel={displayFuel}
       language={language}
       national={response?.national ?? null}
@@ -520,7 +553,6 @@ function PleinSpot() {
 
   const searchBox = (
     <SearchBox
-      details={details}
       fuel={displayFuel}
       language={language}
       onSelectCity={selectCity}
@@ -531,30 +563,42 @@ function PleinSpot() {
     />
   );
 
-  const statusPill =
+  const fuelPicker = (layout: 'row' | 'scroll') => (
+    <FuelPicker fuel={fuel} language={language} layout={layout} onChange={changeFuel} overview={response?.overview ?? null} />
+  );
+
+  const status =
     loadState === 'error' && response ? (
-      <Pressable accessibilityRole="button" onPress={retry} style={[styles.statusPill, styles.statusPillError, shadows.floating]}>
-        <CircleAlert color={colors.danger} size={15} />
-        <Text style={[styles.statusText, { color: colors.danger }]}>{t.app.errorTitle}</Text>
-        <RefreshCw color={colors.danger} size={14} />
+      <Pressable accessibilityRole="button" onPress={retry} style={[styles.status, shadows.floating]}>
+        <CircleAlert color={colors.red} size={16} />
+        <Text style={[styles.statusText, { color: colors.red }]}>{t.app.errorTitle}</Text>
+        <Text style={styles.statusAction}>{t.app.retry}</Text>
       </Pressable>
     ) : isFetching || (!response && loadState === 'loading') ? (
-      <View style={[styles.statusPill, shadows.floating]}>
-        <ActivityIndicator color={colors.brand} size="small" />
+      <View style={[styles.status, shadows.floating]}>
+        <ActivityIndicator color={colors.blue} size="small" />
         <Text style={styles.statusText}>{response ? t.app.updating : t.app.loading}</Text>
       </View>
     ) : null;
 
-  const noticePill = notice ? (
-    <Pressable onPress={() => setNotice(null)} style={[styles.notice, shadows.floating]}>
-      <CircleAlert color={colors.warning} size={16} />
+  const liveToast = liveMessage ? (
+    <Pressable onPress={() => setLiveMessage(null)} style={[styles.status, styles.notice, shadows.floating]}>
+      <RefreshCw color={colors.blue} size={16} />
+      <Text style={styles.noticeText}>{liveMessage}</Text>
+    </Pressable>
+  ) : null;
+
+  const noticeMessage = notice ? (
+    <Pressable onPress={() => setNotice(null)} style={[styles.status, styles.notice, shadows.floating]}>
+      <CircleAlert color={colors.yellowText} size={16} />
       <Text style={styles.noticeText}>{notice}</Text>
     </Pressable>
   ) : null;
 
   const map = (padding: MapPadding) => (
     <StationMap
-      bestStationId={bestStationId}
+      bestPrice={bestPrice}
+      changes={recentChanges}
       compact={!isDesktop}
       fuel={displayFuel}
       highlightedStationId={highlightedId}
@@ -582,40 +626,44 @@ function PleinSpot() {
     return (
       <View style={styles.desktopRoot}>
         <View style={[styles.sidebar, { width: sidebarWidth }]}>
-          <View style={styles.sidebarHeader}>
-            <Wordmark size={21} tagline={t.app.tagline} />
-            <LanguageToggle language={language} onChange={setLanguage} />
+          <View style={styles.sign}>
+            <View pointerEvents="none" style={styles.signRule} />
+            <View style={styles.signTop}>
+              <Wordmark size={26} />
+              <LanguageToggle language={language} onChange={setLanguage} />
+            </View>
+            <View style={styles.signSearch}>{searchBox}</View>
           </View>
-
-          <View style={styles.sidebarSearch}>{searchBox}</View>
 
           {selected ? (
             stationDetails
           ) : (
             <>
-              <View style={styles.sidebarFuel}>
-                <FuelPicker fuel={fuel} language={language} layout="grid" onChange={changeFuel} overview={response?.overview ?? null} />
-              </View>
+              <View style={styles.fuelBar}>{fuelPicker('row')}</View>
               {stationList}
             </>
           )}
 
-          <View style={styles.sidebarFooter}>
-            <Text numberOfLines={1} style={styles.footerText}>
-              {dataUpdated ? t.app.dataUpdated(dataUpdated) : t.app.source}
-            </Text>
-            <View style={styles.footerLinks}>
-              <FooterLink label={t.app.about} onPress={() => setIsAboutOpen(true)} />
-              <FooterLink label={t.app.cookies} onPress={openConsentSettings} />
+          <View style={styles.footer}>
+            <View style={styles.footerCopy}>
+              <LiveLine isLive={isLive} label={dataUpdated ? t.app.dataUpdated(dataUpdated) : t.app.loading} language={language} />
+              <Pressable accessibilityRole="link" onPress={() => Linking.openURL(OSM_COPYRIGHT_URL)}>
+                <Text numberOfLines={1} style={styles.footerText}>
+                  {t.app.osmCredit}
+                </Text>
+              </Pressable>
             </View>
+            <FooterLink label={t.app.about} onPress={() => setIsAboutOpen(true)} />
+            <FooterLink label={t.app.cookies} onPress={openConsentSettings} />
           </View>
         </View>
 
         <View style={styles.mapArea}>
-          {map({ bottom: 40, left: 40, right: 80, top: 80 })}
-          <View pointerEvents="box-none" style={styles.mapTopOverlay}>
-            {statusPill}
-            {noticePill}
+          {map({ bottom: 64, left: 48, right: 72, top: 72 })}
+          <View pointerEvents="box-none" style={styles.mapTop}>
+            {status}
+            {liveToast}
+            {noticeMessage}
           </View>
           <MapLegend language={language} />
           <View style={styles.desktopLocate}>
@@ -629,39 +677,34 @@ function PleinSpot() {
 
   // ----- Mobile -------------------------------------------------------------------------------
 
-  const collapsedSheetHeight = (stations.length > 0 ? 156 : 96) + insets.bottom;
-  const sheetHeight = selected
-    ? Math.round(height * 0.7)
-    : isSheetExpanded
-      ? Math.round(height * 0.62)
-      : collapsedSheetHeight;
+  const collapsedSheetHeight = (stations.length > 0 ? 168 : 84) + insets.bottom;
+  const sheetHeight = selected ? Math.round(height * 0.72) : isSheetExpanded ? Math.round(height * 0.64) : collapsedSheetHeight;
 
   return (
     <View style={styles.mobileRoot}>
-      {map({ bottom: sheetHeight + 16, left: 24, right: 24, top: topOverlayHeight + 16 })}
+      {map({ bottom: sheetHeight + 24, left: 32, right: 32, top: topOverlayHeight + 24 })}
 
       <View
         onLayout={(event) => setTopOverlayHeight(Math.round(event.nativeEvent.layout.height))}
-        pointerEvents="box-none"
-        style={[styles.mobileTop, { paddingTop: insets.top + 10 }]}
+        style={[styles.mobileTop, shadows.floating]}
       >
-        <View style={styles.mobileSearchRow}>
+        <View style={[styles.mobileBand, { paddingTop: insets.top + 8 }]}>
           <Pressable accessibilityLabel={t.app.about} accessibilityRole="button" onPress={() => setIsAboutOpen(true)}>
-            <BrandMark size={50} />
+            <BrandMark size={40} />
           </Pressable>
           <View style={styles.mobileSearch}>{searchBox}</View>
         </View>
-        <View style={styles.mobileFuel}>
-          <FuelPicker fuel={fuel} language={language} layout="scroll" onChange={changeFuel} overview={response?.overview ?? null} />
-        </View>
-        <View pointerEvents="box-none" style={styles.mobileStatus}>
-          {statusPill}
-          {noticePill}
-        </View>
+        <View style={styles.mobileFuel}>{fuelPicker('scroll')}</View>
+      </View>
+
+      <View pointerEvents="box-none" style={[styles.mobileStatus, { top: topOverlayHeight + 10 }]}>
+        {status}
+        {liveToast}
+        {noticeMessage}
       </View>
 
       <View pointerEvents="box-none" style={[styles.mobileFloating, { bottom: sheetHeight + 12 }]}>
-        <Text style={styles.mobileAttribution}>© IGN · Géoplateforme</Text>
+        <Text style={styles.mobileAttribution}>© IGN · © OpenStreetMap</Text>
         <LocateButton compact isLocating={isLocating} label={t.app.locate} onPress={() => locateUser()} />
       </View>
 
@@ -685,23 +728,21 @@ function PleinSpot() {
               <View style={styles.sheetHeaderRow}>
                 <View style={styles.sheetHeaderCopy}>
                   <Text numberOfLines={1} style={styles.sheetTitle}>
-                    {response
-                      ? `${t.zone.stations(formatCount(response.total, language))} · ${FUEL_META[displayFuel].label[language]}`
-                      : t.app.loading}
+                    {response ? `${fuelLabel}  ` : t.app.loading}
+                    {response ? <Text style={styles.sheetCount}>{t.zone.stations(formatCount(response.total, language))}</Text> : null}
                   </Text>
                   {stats ? (
                     <Text numberOfLines={1} style={styles.sheetSubtitle}>
-                      {t.zone.cheapest} <Text style={{ color: tierColors.cheap.text }}>{formatPrice(stats.min, language)}</Text>
-                      {'  ·  '}
-                      {t.zone.average} {formatPrice(stats.average, language)}
+                      {formatPriceValue(stats.min, language)} {t.zone.lowest}
+                      {dataUpdated ? ` · ${t.app.dataUpdated(dataUpdated)}` : ''}
                     </Text>
                   ) : null}
                 </View>
                 {stations.length > 0 ? (
                   isSheetExpanded ? (
-                    <ChevronDown color={colors.textMuted} size={22} />
+                    <ChevronDown color={colors.grey} size={24} />
                   ) : (
-                    <ChevronUp color={colors.textMuted} size={22} />
+                    <ChevronUp color={colors.grey} size={24} />
                   )
                 ) : null}
               </View>
@@ -710,13 +751,13 @@ function PleinSpot() {
             {isSheetExpanded ? (
               stationList
             ) : loadState === 'error' && !response ? (
-              <View style={styles.sheetCollapsedError}>
-                <ErrorCard language={language} onRetry={retry} />
+              <View style={styles.sheetError}>
+                <ErrorMessage language={language} onRetry={retry} />
               </View>
             ) : (
               <StationList
-                bestStationId={bestStationId}
-                details={details}
+                bestPrice={bestPrice}
+                changes={recentChanges}
                 entries={entries.slice(0, 1)}
                 fuel={displayFuel}
                 highlightedStationId={null}
@@ -724,6 +765,7 @@ function PleinSpot() {
                 now={now}
                 onHover={setHighlightedId}
                 onSelect={handleListSelect}
+                scrollEnabled={false}
                 stats={stats}
               />
             )}
@@ -731,6 +773,38 @@ function PleinSpot() {
         )}
       </View>
       {about}
+    </View>
+  );
+}
+
+function diffPrices(previous: StationsResponse, next: StationsResponse): PriceChanges {
+  const before = new Map(previous.stations.map((station) => [station.id, station]));
+  const changes: PriceChanges = {};
+  const at = Date.now();
+
+  for (const station of next.stations) {
+    const from = before.get(station.id)?.prices[next.fuel]?.value;
+    const to = station.prices[next.fuel]?.value;
+
+    if (from != null && to != null && Math.abs(from - to) >= 0.0005) {
+      changes[`${station.id}:${next.fuel}`] = { at, from, to } satisfies PriceChange;
+    }
+  }
+
+  return changes;
+}
+
+function LiveLine({ isLive, label, language }: { isLive: boolean; label: string; language: AppLanguage }) {
+  const t = copy[language].live;
+
+  return (
+    <View style={styles.liveLine}>
+      <View style={[styles.liveDot, { backgroundColor: isLive ? colors.green : colors.greyLight }]} />
+      <Text numberOfLines={1} style={styles.footerText}>
+        <Text style={[styles.liveLabel, { color: isLive ? colors.green : colors.grey }]}>{isLive ? t.live : t.offline}</Text>
+        {'  '}
+        {label}
+      </Text>
     </View>
   );
 }
@@ -769,7 +843,7 @@ function LocateButton({
   if (compact) {
     return isLocating ? (
       <View style={[styles.locateCompact, shadows.floating]}>
-        <ActivityIndicator color={colors.brand} size="small" />
+        <ActivityIndicator color={colors.blue} size="small" />
       </View>
     ) : (
       <IconButton icon={LocateFixed} label={label} onPress={onPress} size={46} tone="floating" />
@@ -783,7 +857,7 @@ function LocateButton({
       onPress={onPress}
       style={({ hovered }) => [styles.locate, shadows.floating, hovered && styles.locateHovered]}
     >
-      {isLocating ? <ActivityIndicator color={colors.brand} size="small" /> : <LocateFixed color={colors.brand} size={18} />}
+      {isLocating ? <ActivityIndicator color={colors.blue} size="small" /> : <LocateFixed color={colors.blue} size={18} />}
       <Text style={styles.locateText}>{label}</Text>
     </Pressable>
   );
@@ -815,7 +889,7 @@ function Segmented<T extends string>({
 }) {
   return (
     <View accessibilityRole="radiogroup" style={styles.segmented}>
-      {options.map((option) => {
+      {options.map((option, index) => {
         const isActive = option.value === value;
 
         return (
@@ -824,7 +898,12 @@ function Segmented<T extends string>({
             accessibilityState={{ checked: isActive }}
             key={option.value}
             onPress={() => onChange(option.value)}
-            style={[styles.segment, isActive && [styles.segmentActive, shadows.card]]}
+            style={({ hovered }) => [
+              styles.segment,
+              index > 0 && styles.segmentRule,
+              hovered && !isActive && styles.segmentHovered,
+              isActive && styles.segmentActive,
+            ]}
           >
             <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>{option.label}</Text>
           </Pressable>
@@ -835,27 +914,24 @@ function Segmented<T extends string>({
 }
 
 function MapLegend({ language }: { language: AppLanguage }) {
-  const t = copy[language];
+  const t = copy[language].legend;
 
   return (
-    <View style={[styles.legend, shadows.panel]}>
-      <LegendItem color={tierColors.cheap.solid} label={t.legend.cheap} />
-      <LegendItem color={tierColors.mid.solid} label={t.legend.mid} />
-      <LegendItem color={tierColors.high.solid} label={t.legend.high} />
-      <View style={styles.legendItem}>
-        <View style={styles.legendStar}>
-          <Star color="#713F12" size={9} strokeWidth={3} />
-        </View>
-        <Text style={styles.legendText}>{t.legend.best}</Text>
-      </View>
+    <View style={[styles.legend, shadows.floating]}>
+      <Text style={styles.legendTitle}>{t.title}</Text>
+      <LegendItem label={t.cheap} swatch={{ backgroundColor: tierColors.cheap.fill }} />
+      <LegendItem label={t.mid} swatch={{ backgroundColor: tierColors.mid.fill }} />
+      <LegendItem label={t.high} swatch={{ backgroundColor: tierColors.high.fill }} />
+      <LegendItem inner label={t.best} swatch={{ backgroundColor: tierColors.cheap.fill }} />
+      <LegendItem label={t.stale} swatch={{ backgroundColor: colors.white, borderColor: colors.grey, borderWidth: 1.5 }} />
     </View>
   );
 }
 
-function LegendItem({ color, label }: { color: string; label: string }) {
+function LegendItem({ inner = false, label, swatch }: { inner?: boolean; label: string; swatch: object }) {
   return (
     <View style={styles.legendItem}>
-      <View style={[styles.legendDot, { backgroundColor: color }]} />
+      <View style={[styles.legendSwatch, swatch]}>{inner ? <View style={styles.legendInner} /> : null}</View>
       <Text style={styles.legendText}>{label}</Text>
     </View>
   );
@@ -864,26 +940,22 @@ function LegendItem({ color, label }: { color: string; label: string }) {
 function FooterLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable accessibilityRole="link" onPress={onPress}>
-      {({ hovered }) => (
-        <Text style={[styles.footerLink, hovered && styles.footerLinkHovered]}>{label}</Text>
-      )}
+      {({ hovered }) => <Text style={[styles.footerLink, hovered && styles.footerLinkHovered]}>{label}</Text>}
     </Pressable>
   );
 }
 
-function ErrorCard({ language, onRetry }: { language: AppLanguage; onRetry: () => void }) {
+function ErrorMessage({ language, onRetry }: { language: AppLanguage; onRetry: () => void }) {
   const t = copy[language].app;
 
   return (
-    <View style={styles.errorCard}>
-      <CircleAlert color={colors.danger} size={20} />
+    <View style={styles.error}>
+      <CircleAlert color={colors.red} size={20} />
       <View style={styles.errorCopy}>
         <Text style={styles.errorTitle}>{t.errorTitle}</Text>
         <Text style={styles.errorBody}>{t.errorBody}</Text>
       </View>
-      <Pressable accessibilityRole="button" onPress={onRetry} style={styles.errorButton}>
-        <Text style={styles.errorButtonText}>{t.retry}</Text>
-      </Pressable>
+      <Button label={t.retry} onPress={onRetry} variant="secondary" />
     </View>
   );
 }
@@ -893,12 +965,11 @@ function ListSkeleton() {
     <View style={styles.skeleton}>
       {[0, 1, 2, 3, 4, 5].map((index) => (
         <View key={index} style={styles.skeletonRow}>
-          <View style={styles.skeletonBadge} />
+          <View style={styles.skeletonSlat} />
           <View style={styles.skeletonLines}>
-            <View style={[styles.skeletonLine, { width: '60%' }]} />
-            <View style={[styles.skeletonLine, { width: '85%' }]} />
+            <View style={[styles.skeletonLine, { width: '62%' }]} />
+            <View style={[styles.skeletonLine, { width: '88%' }]} />
           </View>
-          <View style={[styles.skeletonLine, { height: 18, width: 58 }]} />
         </View>
       ))}
     </View>
@@ -912,176 +983,187 @@ const styles = StyleSheet.create({
     right: 16,
   },
   desktopRoot: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.ground,
     flex: 1,
     flexDirection: 'row',
   },
-  emptyBody: {
-    color: colors.textMuted,
-    fontFamily: fonts.regular,
-    fontSize: 13.5,
-    lineHeight: 19,
-    marginTop: 4,
+  empty: {
+    gap: 4,
+    paddingVertical: 16,
   },
-  emptyState: {
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    marginTop: 14,
-    padding: 16,
+  emptyBody: {
+    color: colors.grey,
+    fontFamily: fonts.regular,
+    fontSize: type.small,
+    lineHeight: 20,
   },
   emptyTitle: {
-    color: colors.text,
-    fontFamily: fonts.bold,
-    fontSize: 15,
-  },
-  errorBody: {
-    color: colors.textMuted,
-    fontFamily: fonts.regular,
-    fontSize: 13,
-    marginTop: 2,
-  },
-  errorButton: {
-    backgroundColor: colors.surface,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  errorButtonText: {
-    color: colors.text,
+    color: colors.black,
     fontFamily: fonts.semibold,
-    fontSize: 13,
+    fontSize: type.body,
   },
-  errorCard: {
+  error: {
     alignItems: 'center',
-    backgroundColor: colors.dangerSoft,
-    borderRadius: radius.md,
     flexDirection: 'row',
     gap: 12,
-    marginTop: 14,
-    padding: 14,
+    paddingVertical: 16,
+  },
+  errorBody: {
+    color: colors.grey,
+    fontFamily: fonts.regular,
+    fontSize: type.small,
   },
   errorCopy: {
     flex: 1,
   },
   errorTitle: {
-    color: colors.text,
-    fontFamily: fonts.bold,
-    fontSize: 14,
+    color: colors.black,
+    fontFamily: fonts.semibold,
+    fontSize: type.body,
+  },
+  footer: {
+    alignItems: 'center',
+    borderTopColor: colors.rule,
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    gap: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
   footerLink: {
-    color: colors.textMuted,
-    fontFamily: fonts.semibold,
-    fontSize: 12,
+    color: colors.grey,
+    fontFamily: fonts.medium,
+    fontSize: type.meta,
   },
   footerLinkHovered: {
-    color: colors.text,
+    color: colors.blue,
     textDecorationLine: 'underline',
   },
-  footerLinks: {
+  liveDot: {
+    borderRadius: 4,
+    height: 8,
+    width: 8,
+  },
+  liveLabel: {
+    fontFamily: fonts.semibold,
+  },
+  liveLine: {
+    alignItems: 'center',
     flexDirection: 'row',
-    gap: 14,
+    gap: 6,
+  },
+  footerCopy: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
   },
   footerText: {
-    color: colors.textSubtle,
-    flex: 1,
+    color: colors.greyLight,
     fontFamily: fonts.regular,
-    fontSize: 12,
+    fontSize: type.meta,
+  },
+  fuelBar: {
+    borderBottomColor: colors.rule,
+    borderBottomWidth: 1,
+    paddingBottom: 8,
+    paddingHorizontal: 12,
+    paddingTop: 6,
   },
   languageToggle: {
     alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: radius.sm,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    borderRadius: radius.control,
     borderWidth: 1,
-    height: 34,
+    height: 32,
     justifyContent: 'center',
     width: 40,
   },
   languageToggleHovered: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
   },
   languageToggleText: {
-    color: colors.textMuted,
-    fontFamily: fonts.bold,
-    fontSize: 12,
-    letterSpacing: 0.4,
+    color: colors.white,
+    fontFamily: fonts.semibold,
+    fontSize: type.meta,
   },
   legend: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.94)',
-    borderRadius: radius.pill,
+    backgroundColor: colors.white,
+    borderRadius: radius.control,
     bottom: 16,
     flexDirection: 'row',
     gap: 14,
     left: 16,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 9,
     position: 'absolute',
   },
-  legendDot: {
+  legendInner: {
     borderColor: colors.white,
-    borderRadius: radius.pill,
+    borderRadius: 1,
     borderWidth: 1.5,
-    height: 12,
-    width: 12,
+    bottom: 2,
+    left: 2,
+    position: 'absolute',
+    right: 2,
+    top: 2,
   },
   legendItem: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 6,
   },
-  legendStar: {
-    alignItems: 'center',
-    backgroundColor: colors.star,
-    borderRadius: radius.pill,
+  legendSwatch: {
+    borderRadius: radius.slat,
     height: 14,
-    justifyContent: 'center',
-    width: 14,
+    width: 22,
   },
   legendText: {
-    color: colors.textMuted,
+    color: colors.black,
+    fontFamily: fonts.regular,
+    fontSize: type.meta,
+  },
+  legendTitle: {
+    color: colors.black,
     fontFamily: fonts.semibold,
-    fontSize: 12,
+    fontSize: type.meta,
   },
   listHeader: {
-    paddingBottom: 6,
+    paddingBottom: 4,
     paddingHorizontal: 20,
     paddingTop: 16,
   },
   locate: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.pill,
+    backgroundColor: colors.white,
+    borderRadius: radius.control,
     flexDirection: 'row',
     gap: 8,
     height: 42,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
   },
   locateCompact: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 16,
+    backgroundColor: colors.white,
+    borderRadius: radius.control,
     height: 46,
     justifyContent: 'center',
     width: 46,
   },
   locateHovered: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.ground,
   },
   locateText: {
-    color: colors.text,
+    color: colors.black,
     fontFamily: fonts.semibold,
-    fontSize: 14,
+    fontSize: type.small,
   },
   mapArea: {
     flex: 1,
     overflow: 'hidden',
     position: 'relative',
   },
-  mapTopOverlay: {
+  mapTop: {
     alignItems: 'center',
     gap: 8,
     left: 0,
@@ -1090,13 +1172,20 @@ const styles = StyleSheet.create({
     top: 16,
   },
   mobileAttribution: {
-    backgroundColor: 'rgba(255, 255, 255, 0.78)',
-    borderRadius: radius.sm,
-    color: colors.textMuted,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    color: colors.grey,
     fontFamily: fonts.regular,
-    fontSize: 10,
+    fontSize: 11,
     paddingHorizontal: 6,
     paddingVertical: 2,
+  },
+  mobileBand: {
+    alignItems: 'center',
+    backgroundColor: colors.blue,
+    flexDirection: 'row',
+    gap: 10,
+    paddingBottom: 10,
+    paddingHorizontal: 12,
   },
   mobileFloating: {
     alignItems: 'flex-end',
@@ -1107,11 +1196,11 @@ const styles = StyleSheet.create({
     right: 12,
   },
   mobileFuel: {
-    marginHorizontal: -12,
-    marginTop: 10,
+    backgroundColor: colors.white,
+    paddingVertical: 4,
   },
   mobileRoot: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.ground,
     flex: 1,
     overflow: 'hidden',
   },
@@ -1119,94 +1208,98 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  mobileSearchRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
   mobileStatus: {
     alignItems: 'center',
     gap: 8,
-    marginTop: 10,
+    left: 12,
+    position: 'absolute',
+    right: 12,
   },
   mobileTop: {
     left: 0,
-    paddingHorizontal: 12,
     position: 'absolute',
     right: 0,
     top: 0,
     zIndex: 10,
   },
   notice: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    flexDirection: 'row',
-    gap: 10,
     maxWidth: 460,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
   },
   noticeText: {
-    color: colors.text,
+    color: colors.black,
     flexShrink: 1,
-    fontFamily: fonts.semibold,
-    fontSize: 13,
-    lineHeight: 18,
+    fontFamily: fonts.medium,
+    fontSize: type.small,
+    lineHeight: 20,
   },
   segment: {
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 6,
   },
   segmentActive: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.blueTint,
+  },
+  segmentHovered: {
+    backgroundColor: colors.ground,
+  },
+  segmentRule: {
+    borderLeftColor: colors.ruleStrong,
+    borderLeftWidth: 1,
   },
   segmentText: {
-    color: colors.textMuted,
-    fontFamily: fonts.semibold,
-    fontSize: 13,
+    color: colors.grey,
+    fontFamily: fonts.medium,
+    fontSize: type.small,
   },
   segmentTextActive: {
-    color: colors.text,
+    color: colors.blue,
+    fontFamily: fonts.semibold,
   },
   segmented: {
-    backgroundColor: colors.surfaceSunken,
-    borderRadius: 10,
+    borderColor: colors.ruleStrong,
+    borderRadius: radius.control,
+    borderWidth: 1,
     flexDirection: 'row',
-    padding: 3,
+    overflow: 'hidden',
   },
   sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
+    backgroundColor: colors.white,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
     bottom: 0,
     left: 0,
     overflow: 'hidden',
     position: 'absolute',
     right: 0,
-    transitionDuration: '220ms',
+    transitionDuration: motion.duration,
     transitionProperty: 'height',
-    transitionTimingFunction: 'ease-out',
+    transitionTimingFunction: motion.easing,
     zIndex: 20,
   } as never,
-  sheetCollapsedError: {
+  sheetCount: {
+    color: colors.greyLight,
+    fontFamily: fonts.regular,
+    fontSize: type.small,
+  },
+  sheetError: {
     paddingHorizontal: 16,
   },
   sheetHandle: {
     alignSelf: 'center',
-    backgroundColor: colors.borderStrong,
-    borderRadius: radius.pill,
+    backgroundColor: colors.ruleStrong,
+    borderRadius: 2,
     height: 4,
-    width: 40,
+    width: 36,
   },
   sheetHandleArea: {
-    paddingBottom: 2,
+    paddingBottom: 4,
     paddingTop: 8,
   },
   sheetHeader: {
-    paddingBottom: 6,
-    paddingHorizontal: 18,
+    borderBottomColor: colors.rule,
+    borderBottomWidth: 1,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
     paddingTop: 8,
   },
   sheetHeaderCopy: {
@@ -1217,112 +1310,116 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
-    marginTop: 10,
+    marginTop: 8,
   },
   sheetSubtitle: {
-    color: colors.textMuted,
-    fontFamily: fonts.semibold,
-    fontSize: 13,
+    color: colors.grey,
+    fontFamily: fonts.regular,
+    fontSize: type.small,
     fontVariant: ['tabular-nums'],
     marginTop: 2,
   },
   sheetTitle: {
-    color: colors.text,
-    fontFamily: fonts.bold,
-    fontSize: 16,
-    letterSpacing: -0.3,
+    color: colors.black,
+    fontFamily: fonts.semibold,
+    fontSize: type.heading,
   },
   sidebar: {
-    backgroundColor: colors.surface,
-    borderRightColor: colors.border,
+    backgroundColor: colors.white,
+    borderRightColor: colors.rule,
     borderRightWidth: 1,
-    boxShadow: '4px 0 24px -12px rgba(16, 24, 40, 0.18)',
     zIndex: 10,
   },
-  sidebarFooter: {
-    alignItems: 'center',
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+  sign: {
+    backgroundColor: colors.blue,
+    borderRadius: radius.sheet,
+    margin: 10,
+    paddingBottom: 18,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    position: 'relative',
+    zIndex: 30,
   },
-  sidebarFuel: {
-    paddingHorizontal: 20,
-    paddingTop: 14,
+  signRule: {
+    borderColor: 'rgba(255, 255, 255, 0.92)',
+    borderRadius: radius.control,
+    borderWidth: 2,
+    bottom: 5,
+    left: 5,
+    position: 'absolute',
+    right: 5,
+    top: 5,
   },
-  sidebarHeader: {
+  signSearch: {
+    marginTop: 14,
+  },
+  signTop: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 18,
-  },
-  sidebarSearch: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    zIndex: 30,
   },
   skeleton: {
-    gap: 18,
-    marginTop: 18,
-  },
-  skeletonBadge: {
-    backgroundColor: colors.surfaceSunken,
-    borderRadius: 12,
-    height: 40,
-    width: 40,
+    gap: 20,
+    marginTop: 16,
   },
   skeletonLine: {
-    backgroundColor: colors.surfaceSunken,
-    borderRadius: 6,
-    height: 11,
+    backgroundColor: colors.ground,
+    borderRadius: 3,
+    height: 12,
   },
   skeletonLines: {
     flex: 1,
     gap: 8,
   },
   skeletonRow: {
-    alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
   },
+  skeletonSlat: {
+    backgroundColor: colors.ground,
+    borderRadius: radius.slat,
+    height: 24,
+    width: 58,
+  },
   sortLabel: {
-    color: colors.textSubtle,
-    fontFamily: fonts.semibold,
-    fontSize: 12.5,
+    color: colors.grey,
+    fontFamily: fonts.regular,
+    fontSize: type.small,
   },
   sortRow: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 16,
+    marginTop: 20,
+    paddingBottom: 4,
   },
   splash: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.white,
     flex: 1,
     justifyContent: 'center',
   },
   splashSpinner: {
     marginTop: 20,
   },
-  statusPill: {
+  status: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.pill,
+    backgroundColor: colors.white,
+    borderRadius: radius.control,
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 9,
   },
-  statusPillError: {
-    backgroundColor: colors.dangerSoft,
+  statusAction: {
+    color: colors.blue,
+    fontFamily: fonts.semibold,
+    fontSize: type.small,
+    textDecorationLine: 'underline',
   },
   statusText: {
-    color: colors.text,
-    fontFamily: fonts.semibold,
-    fontSize: 13,
+    color: colors.black,
+    fontFamily: fonts.medium,
+    fontSize: type.small,
   },
 });

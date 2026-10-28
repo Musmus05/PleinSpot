@@ -1,57 +1,39 @@
-import type { StationDetails } from '../types/station';
+import type { Station } from '../types/station';
 
-export type BrandStyle = {
-  background: string;
-  foreground: string;
-  initials: string;
-  label: string;
-};
-
-// Monogram colours loosely inspired by each network's identity, so a station can be recognised
-// at a glance in the list without using any logo artwork.
-const BRANDS: Array<{ pattern: RegExp } & BrandStyle> = [
-  { background: '#0057A6', foreground: '#FFFFFF', initials: 'L', label: 'E.Leclerc', pattern: /leclerc/i },
-  { background: '#E4002B', foreground: '#FFFFFF', initials: 'TA', label: 'TotalEnergies Access', pattern: /total\s*access/i },
-  { background: '#E4002B', foreground: '#FFFFFF', initials: 'T', label: 'TotalEnergies', pattern: /total/i },
-  { background: '#E2001A', foreground: '#FFFFFF', initials: 'I', label: 'Intermarché', pattern: /intermarch/i },
-  { background: '#004E9E', foreground: '#FFFFFF', initials: 'C', label: 'Carrefour', pattern: /carrefour/i },
-  { background: '#E1001A', foreground: '#FFFFFF', initials: 'A', label: 'Auchan', pattern: /auchan/i },
-  { background: '#1F3B8C', foreground: '#FFFFFF', initials: 'U', label: 'Système U', pattern: /syst[eè]me\s*u|super\s*u|hyper\s*u|u\s*express/i },
-  { background: '#D52B1E', foreground: '#FFFFFF', initials: 'E', label: 'Esso', pattern: /esso/i },
-  { background: '#007A33', foreground: '#FFFFFF', initials: 'BP', label: 'BP', pattern: /^bp\b/i },
-  { background: '#FBCE07', foreground: '#7A1712', initials: 'S', label: 'Shell', pattern: /shell/i },
-  { background: '#D2001F', foreground: '#FFFFFF', initials: 'A', label: 'Avia', pattern: /avia/i },
-  { background: '#00843D', foreground: '#FFFFFF', initials: 'C', label: 'Casino', pattern: /casino|g[ée]ant/i },
-  { background: '#E30613', foreground: '#FFFFFF', initials: 'C', label: 'Cora', pattern: /^cora\b/i },
-  { background: '#00539F', foreground: '#FFFFFF', initials: 'D', label: 'Dyneff', pattern: /dyneff/i },
-  { background: '#FFD500', foreground: '#1D2939', initials: 'N', label: 'Netto', pattern: /netto/i },
-  { background: '#FFD100', foreground: '#1D2939', initials: 'E', label: 'Eni', pattern: /\beni\b|agip/i },
-  { background: '#C8102E', foreground: '#FFFFFF', initials: 'E', label: 'Elan', pattern: /^elan\b/i },
-  { background: '#D60B52', foreground: '#FFFFFF', initials: 'AS', label: 'AS24', pattern: /as\s*24/i },
-  { background: '#3E8E41', foreground: '#FFFFFF', initials: 'S', label: 'Sigma', pattern: /^sigma\b/i },
+// OpenStreetMap spells the same network many ways ("Total", "TOTAL ACCESS", "TotalEnergies"…).
+const BRANDS: Array<{ label: string; pattern: RegExp }> = [
+  { label: 'E.Leclerc', pattern: /leclerc/i },
+  { label: 'TotalEnergies Access', pattern: /total\s*(energies\s*)?access/i },
+  { label: 'TotalEnergies', pattern: /total/i },
+  { label: 'Intermarché', pattern: /intermarch/i },
+  { label: 'Carrefour', pattern: /carrefour/i },
+  { label: 'Auchan', pattern: /auchan/i },
+  { label: 'Système U', pattern: /syst[eè]me\s*u|super\s*u|hyper\s*u|u\s*express|^u$/i },
+  { label: 'Esso Express', pattern: /esso\s*express/i },
+  { label: 'Esso', pattern: /esso/i },
+  { label: 'BP', pattern: /^bp\b/i },
+  { label: 'Shell', pattern: /shell/i },
+  { label: 'Avia', pattern: /avia/i },
+  { label: 'Casino', pattern: /casino|g[ée]ant/i },
+  { label: 'Dyneff', pattern: /dyneff/i },
+  { label: 'Netto', pattern: /netto/i },
+  { label: 'Eni', pattern: /\beni\b|agip/i },
+  { label: 'AS24', pattern: /as\s*24/i },
 ];
 
-const INDEPENDENT_PATTERN = /ind[ée]pendant|sans enseigne|^autre/i;
+export function getBrandLabel(brand: string | null | undefined) {
+  const trimmed = brand?.trim();
 
-export function getBrandStyle(details: StationDetails | null | undefined): BrandStyle | null {
-  const brand = details?.brand?.trim();
-
-  if (!brand || INDEPENDENT_PATTERN.test(brand)) {
+  if (!trimmed) {
     return null;
   }
 
-  const known = BRANDS.find((entry) => entry.pattern.test(brand));
+  return BRANDS.find((entry) => entry.pattern.test(trimmed))?.label ?? trimmed;
+}
 
-  if (known) {
-    return { background: known.background, foreground: known.foreground, initials: known.initials, label: known.label };
-  }
-
-  return {
-    background: '#344054',
-    foreground: '#FFFFFF',
-    initials: brand.replace(/[^\p{L}\p{N}]/gu, '').slice(0, 1).toUpperCase() || '•',
-    label: brand,
-  };
+/** The name people know the station by: its own name, else its network, else its town. */
+export function getStationTitle(station: Station) {
+  return formatStationName(station.name) ?? getBrandLabel(station.brand) ?? station.city;
 }
 
 const KEEP_UPPERCASE = new Set(['AS24', 'BP', 'DAC', 'EURL', 'RN', 'SA', 'SARL', 'SAS', 'SNC', 'ZA', 'ZAC', 'ZI']);

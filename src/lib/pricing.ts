@@ -1,4 +1,4 @@
-import type { PriceStats, Station, StationPrice } from '../types/station';
+import type { PriceStats, StationPrice } from '../types/station';
 import { getAgeInMs } from './format';
 import type { FuelKey } from './fuels';
 
@@ -9,10 +9,6 @@ export const TANK_LITERS = 50;
 
 /** Past this age a declared price is flagged as possibly outdated. */
 export const STALE_PRICE_MS = 7 * 24 * 60 * 60 * 1000;
-
-export function getStationPrice(station: Station, fuel: FuelKey): StationPrice | null {
-  return station.prices[fuel] ?? null;
-}
 
 /**
  * Tiers are relative to the stations of the visible area, split in thirds. Using quantiles
@@ -52,4 +48,18 @@ export function getTankSavings(price: number, reference: number | null | undefin
   }
 
   return (reference - price) * TANK_LITERS;
+}
+
+/** A price that moved between two versions of the official data. */
+export type PriceChange = {
+  at: number;
+  from: number;
+  to: number;
+};
+
+/** Keyed by `${stationId}:${fuel}`. */
+export type PriceChanges = Record<string, PriceChange>;
+
+export function getPriceChange(changes: PriceChanges, stationId: number, fuel: FuelKey) {
+  return changes[`${stationId}:${fuel}`] ?? null;
 }

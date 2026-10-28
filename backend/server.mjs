@@ -6,8 +6,15 @@ import { extname, resolve, sep } from 'node:path';
 import { brotliCompressSync, constants as zlibConstants, gzipSync } from 'node:zlib';
 
 import { searchCities } from './citySearchService.mjs';
-import { FUEL_KEYS, fetchStationsInRegion, getDataStatus, getStationById, startFuelDataRefresh } from './fuelDataService.mjs';
-import { getStationDetails, getStationDetailsBatch } from './stationDetailsService.mjs';
+import {
+  FUEL_KEYS,
+  fetchStationsInRegion,
+  getDataStatus,
+  getStationById,
+  onPricesUpdate,
+  startFuelDataRefresh,
+} from './fuelDataService.mjs';
+import { getStationMetaStatus, startStationMetaRefresh } from './stationMetaService.mjs';
 
 const PORT = Number(process.env.PORT || 4000);
 const DIST_DIR = resolve(process.cwd(), 'dist');
@@ -15,9 +22,13 @@ const INDEX_FILE = resolve(DIST_DIR, 'index.html');
 const HAS_STATIC_BUILD = existsSync(INDEX_FILE);
 const DEFAULT_LIMIT = 200;
 const MAX_LIMIT = 400;
-const MAX_DETAILS_BATCH = 20;
 const COMPRESSIBLE_TYPES = /^(text\/|application\/(javascript|json|manifest\+json|xml)|image\/svg\+xml)/;
 const compressedFileCache = new Map();
+// Open "live" connections (Server-Sent Events) told when new official prices arrive.
+const liveClients = new Set();
+const MAX_LIVE_CLIENTS = 5000;
+// Heroku's router closes connections idle for 55 s.
+const LIVE_HEARTBEAT_MS = 25 * 1000;
 
 const CONTENT_TYPES = {
   '.css': 'text/css; charset=utf-8',
@@ -110,7 +121,18 @@ async function handleApiRequest(request, response, url) {
   const { pathname, searchParams } = url;
 
   if (pathname === '/api/health') {
-    sendJson(request, response, 200, { ok: true, service: 'pleinspot-backend', ...getDataStatus() }, 'no-store');
+    sendJson(
+      request,
+      response,
+      200,
+      { ok: true, service: 'pleinspot-backend', ...getDataStatus(), ...getStationMetaStatus() },
+      'no-store',
+    );
+    return;
+  }
+
+  if (pathname === '/api/live') {
+    openLiveStream(request, response);
     return;
   }
 
@@ -150,25 +172,17 @@ async function handleApiRequest(request, response, url) {
     return;
   }
 
-  if (pathname === '/api/stations/details') {
-    const ids = parseIds(searchParams.get('ids')).slice(0, MAX_DETAILS_BATCH);
-
-    sendJson(request, response, 200, await getStationDetailsBatch(ids), 'public, max-age=3600');
-    return;
-  }
-
   const stationMatch = /^\/api\/stations\/(\d{1,12})$/.exec(pathname);
 
   if (stationMatch) {
-    const stationId = Number(stationMatch[1]);
-    const [result, details] = await Promise.all([getStationById(stationId), getStationDetails(stationId)]);
+    const result = await getStationById(Number(stationMatch[1]));
 
     if (!result) {
       sendJson(request, response, 404, { error: 'Station not found.' });
       return;
     }
 
-    sendJson(request, response, 200, { ...result, details }, 'public, max-age=60');
+    sendJson(request, response, 200, result, 'public, max-age=60');
     return;
   }
 
@@ -204,6 +218,41 @@ async function serveStaticAsset(request, response, pathname) {
 
   return false;
 }
+
+function openLiveStream(request, response) {
+  if (liveClients.size >= MAX_LIVE_CLIENTS) {
+    // EventSource retries on its own; the client also falls back to polling.
+    sendJson(request, response, 503, { error: 'Too many live connections.' });
+    return;
+  }
+
+  response.writeHead(200, {
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'X-Accel-Buffering': 'no',
+  });
+  response.write('retry: 5000\n\n');
+  writeLiveEvent(response, 'status', getDataStatus());
+  liveClients.add(response);
+  request.on('close', () => liveClients.delete(response));
+}
+
+function writeLiveEvent(response, event, payload) {
+  response.write(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`);
+}
+
+onPricesUpdate((update) => {
+  for (const client of liveClients) {
+    writeLiveEvent(client, 'prices', update);
+  }
+});
+
+setInterval(() => {
+  for (const client of liveClients) {
+    client.write(': ping\n\n');
+  }
+}, LIVE_HEARTBEAT_MS).unref();
 
 function sendIndex(request, response) {
   const origin = getPublicOrigin(request);
@@ -379,17 +428,6 @@ function parseFuel(value) {
   return FUEL_KEYS.includes(key) ? key : null;
 }
 
-function parseIds(value) {
-  return [
-    ...new Set(
-      String(value ?? '')
-        .split(',')
-        .map((id) => Number(id.trim()))
-        .filter((id) => Number.isInteger(id) && id > 0),
-    ),
-  ];
-}
-
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
@@ -401,6 +439,7 @@ server.listen(PORT, () => {
       : `PleinSpot backend listening on http://localhost:${PORT}`,
   );
   startFuelDataRefresh();
+  startStationMetaRefresh();
 });
 
 export { server };

@@ -18,9 +18,14 @@ function decimalSeparator(language: AppLanguage) {
   return language === 'fr' ? ',' : '.';
 }
 
-/** "2,398 €" — fuel prices are always shown with three decimals, like on the pumps. */
+/** "2,398" — fuel prices are always shown with three decimals, like on the pumps. */
+export function formatPriceValue(value: number, language: AppLanguage) {
+  return value.toFixed(3).replace('.', decimalSeparator(language));
+}
+
+/** "2,398 €" */
 export function formatPrice(value: number, language: AppLanguage) {
-  return `${value.toFixed(3).replace('.', decimalSeparator(language))} €`;
+  return `${formatPriceValue(value, language)} €`;
 }
 
 /** Splits 2.398 into "2,39" + "8" so the last digit can be rendered smaller, pump-style. */
@@ -33,11 +38,12 @@ export function splitPrice(value: number, language: AppLanguage) {
   };
 }
 
-/** "+0,052 €" / "−0,052 €" */
-export function formatPriceDelta(delta: number, language: AppLanguage) {
-  const sign = delta > 0 ? '+' : delta < 0 ? '−' : '';
+/** 0.046 → "4,6 ct" — drivers compare fuel prices in centimes. */
+export function formatCents(delta: number, language: AppLanguage) {
+  const cents = Math.abs(delta) * 100;
+  const digits = cents < 10 ? 1 : 0;
 
-  return `${sign}${Math.abs(delta).toFixed(3).replace('.', decimalSeparator(language))} €`;
+  return `${cents.toFixed(digits).replace('.', decimalSeparator(language))} ct`;
 }
 
 /** "6,40 €" */
@@ -108,17 +114,6 @@ export function formatRelativeTime(timestamp: string | null, language: AppLangua
   }
 
   return formatter.format(-Math.round(age / DAY_MS), 'day');
-}
-
-/** "28 oct. à 14:59" */
-export function formatDateTime(timestamp: string, language: AppLanguage) {
-  return new Intl.DateTimeFormat(getLocale(language), {
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    month: 'short',
-    timeZone: 'Europe/Paris',
-  }).format(new Date(timestamp));
 }
 
 function toRadians(value: number) {

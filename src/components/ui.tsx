@@ -1,10 +1,16 @@
 import { ComponentType, ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
-import { colors, fonts, radius, shadows } from '../theme';
+import { colors, fonts, motion, radius, shadows, type } from '../theme';
 import type { IconProps } from './icons';
 
 type IconComponent = ComponentType<IconProps>;
+
+const transition = {
+  transitionDuration: motion.duration,
+  transitionProperty: 'background-color, border-color, color',
+  transitionTimingFunction: motion.easing,
+} as never;
 
 export function IconButton({
   icon: Icon,
@@ -12,15 +18,18 @@ export function IconButton({
   onPress,
   size = 40,
   style,
-  tone = 'default',
+  tone = 'plain',
 }: {
   icon: IconComponent;
   label: string;
   onPress: () => void;
   size?: number;
   style?: StyleProp<ViewStyle>;
-  tone?: 'default' | 'floating' | 'ghost';
+  /** `plain` on the panel, `band` on the blue sign band, `floating` over the map. */
+  tone?: 'plain' | 'band' | 'floating';
 }) {
+  const iconColor = tone === 'band' ? colors.white : colors.black;
+
   return (
     <Pressable
       accessibilityLabel={label}
@@ -28,15 +37,17 @@ export function IconButton({
       onPress={onPress}
       style={({ hovered, pressed }) => [
         styles.iconButton,
-        { borderRadius: size / 2.8, height: size, width: size },
+        transition,
+        { height: size, width: size },
+        tone === 'plain' && styles.iconButtonPlain,
+        tone === 'band' && styles.iconButtonBand,
         tone === 'floating' && [styles.iconButtonFloating, shadows.floating],
-        tone === 'ghost' && styles.iconButtonGhost,
-        hovered && styles.iconButtonHovered,
+        hovered && (tone === 'band' ? styles.iconButtonBandHovered : styles.iconButtonHovered),
         pressed && styles.pressed,
         style,
       ]}
     >
-      <Icon color={colors.inkSoft} size={Math.round(size * 0.45)} />
+      <Icon color={iconColor} size={Math.round(size * 0.48)} strokeWidth={2} />
     </Pressable>
   );
 }
@@ -54,9 +65,9 @@ export function Button({
   loading?: boolean;
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
-  variant?: 'primary' | 'secondary' | 'dark';
+  variant?: 'primary' | 'secondary';
 }) {
-  const foreground = variant === 'secondary' ? colors.text : colors.white;
+  const foreground = variant === 'primary' ? colors.white : colors.black;
 
   return (
     <Pressable
@@ -65,10 +76,9 @@ export function Button({
       onPress={onPress}
       style={({ hovered, pressed }) => [
         styles.button,
-        variant === 'primary' && styles.buttonPrimary,
-        variant === 'dark' && styles.buttonDark,
-        variant === 'secondary' && styles.buttonSecondary,
-        hovered && (variant === 'secondary' ? styles.buttonSecondaryHovered : styles.buttonSolidHovered),
+        transition,
+        variant === 'primary' ? styles.buttonPrimary : styles.buttonSecondary,
+        hovered && (variant === 'primary' ? styles.buttonPrimaryHovered : styles.buttonSecondaryHovered),
         pressed && styles.pressed,
         style,
       ]}
@@ -82,34 +92,6 @@ export function Button({
     </Pressable>
   );
 }
-
-export function Chip({
-  children,
-  icon: Icon,
-  tone = 'neutral',
-}: {
-  children: ReactNode;
-  icon?: IconComponent;
-  tone?: 'brand' | 'neutral' | 'warning' | 'danger';
-}) {
-  const palette = CHIP_TONES[tone];
-
-  return (
-    <View style={[styles.chip, { backgroundColor: palette.background }]}>
-      {Icon ? <Icon color={palette.foreground} size={13} strokeWidth={2.4} /> : null}
-      <Text numberOfLines={1} style={[styles.chipText, { color: palette.foreground }]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
-
-const CHIP_TONES = {
-  brand: { background: colors.brandSoft, foreground: colors.brandStrong },
-  danger: { background: colors.dangerSoft, foreground: colors.danger },
-  neutral: { background: colors.surfaceSunken, foreground: colors.textMuted },
-  warning: { background: colors.warningSoft, foreground: colors.warning },
-};
 
 export function SectionTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
   return (
@@ -125,78 +107,66 @@ export function SectionTitle({ children, right }: { children: ReactNode; right?:
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
-    borderRadius: radius.md,
+    borderRadius: radius.control,
     flexDirection: 'row',
     gap: 8,
     justifyContent: 'center',
-    minHeight: 46,
-    paddingHorizontal: 18,
-  },
-  buttonDark: {
-    backgroundColor: colors.ink,
+    minHeight: 44,
+    paddingHorizontal: 16,
   },
   buttonLabel: {
     fontFamily: fonts.semibold,
-    fontSize: 15,
+    fontSize: type.body,
   },
   buttonPrimary: {
-    backgroundColor: colors.brand,
+    backgroundColor: colors.blue,
+  },
+  buttonPrimaryHovered: {
+    backgroundColor: colors.blueDeep,
   },
   buttonSecondary: {
-    backgroundColor: colors.surface,
-    borderColor: colors.borderStrong,
+    backgroundColor: colors.white,
+    borderColor: colors.ruleStrong,
     borderWidth: 1,
   },
   buttonSecondaryHovered: {
-    backgroundColor: colors.surfaceMuted,
-  },
-  buttonSolidHovered: {
-    opacity: 0.92,
-  },
-  chip: {
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    borderRadius: radius.pill,
-    flexDirection: 'row',
-    gap: 5,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-  },
-  chipText: {
-    fontFamily: fonts.semibold,
-    fontSize: 12,
+    backgroundColor: colors.ground,
   },
   iconButton: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
+    borderRadius: radius.control,
     justifyContent: 'center',
   },
-  iconButtonFloating: {
-    borderColor: 'transparent',
+  iconButtonBand: {
+    borderColor: 'rgba(255, 255, 255, 0.55)',
+    borderWidth: 1,
   },
-  iconButtonGhost: {
-    backgroundColor: 'transparent',
-    borderColor: 'transparent',
+  iconButtonBandHovered: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  iconButtonFloating: {
+    backgroundColor: colors.white,
   },
   iconButtonHovered: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.ground,
+  },
+  iconButtonPlain: {
+    backgroundColor: colors.white,
+    borderColor: colors.rule,
+    borderWidth: 1,
   },
   pressed: {
-    opacity: 0.75,
-    transform: [{ scale: 0.98 }],
+    opacity: 0.8,
   },
   sectionTitle: {
-    color: colors.text,
-    fontFamily: fonts.bold,
-    fontSize: 15,
-    letterSpacing: -0.2,
+    color: colors.black,
+    fontFamily: fonts.semibold,
+    fontSize: type.heading,
   },
   sectionTitleRow: {
-    alignItems: 'center',
+    alignItems: 'baseline',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 8,
   },
 });

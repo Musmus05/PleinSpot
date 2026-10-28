@@ -1,22 +1,23 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppLanguage, copy } from '../lib/copy';
-import { formatPrice } from '../lib/format';
+import { formatPriceValue } from '../lib/format';
 import { FUEL_OPTIONS, FuelKey } from '../lib/fuels';
 import type { StationsResponse } from '../types/station';
-import { colors, fonts, radius, shadows } from '../theme';
+import { colors, fonts, motion, radius, type } from '../theme';
+import { FuelBadge } from './FuelBadge';
 
 type FuelPickerProps = {
   fuel: FuelKey;
   language: AppLanguage;
-  layout: 'grid' | 'scroll';
+  layout: 'row' | 'scroll';
   onChange: (fuel: FuelKey) => void;
   overview: StationsResponse['overview'] | null;
 };
 
 export function FuelPicker({ fuel, language, layout, onChange, overview }: FuelPickerProps) {
   const t = copy[language].fuel;
-  const chips = FUEL_OPTIONS.map((option) => {
+  const items = FUEL_OPTIONS.map((option) => {
     const isActive = option.key === fuel;
     const summary = overview?.[option.key] ?? null;
 
@@ -29,15 +30,18 @@ export function FuelPicker({ fuel, language, layout, onChange, overview }: FuelP
         key={option.key}
         onPress={() => onChange(option.key)}
         style={({ hovered }) => [
-          styles.chip,
-          layout === 'grid' ? styles.chipGrid : [styles.chipScroll, shadows.card],
-          hovered && !isActive && styles.chipHovered,
-          isActive && styles.chipActive,
+          styles.item,
+          layout === 'row' ? styles.itemRow : styles.itemScroll,
+          hovered && !isActive && styles.itemHovered,
+          isActive && styles.itemActive,
         ]}
       >
-        <Text style={[styles.label, isActive && styles.labelActive]}>{option.label[language]}</Text>
-        <Text numberOfLines={1} style={[styles.meta, isActive && styles.metaActive]}>
-          {overview == null ? ' ' : summary ? `${t.from} ${formatPrice(summary.min, language)}` : t.none}
+        <FuelBadge active={isActive} fuel={option.key} size={36} />
+        <Text numberOfLines={1} style={[styles.label, isActive && styles.labelActive]}>
+          {option.label[language]}
+        </Text>
+        <Text numberOfLines={1} style={styles.meta}>
+          {overview == null ? ' ' : summary ? t.from(formatPriceValue(summary.min, language)) : t.none}
         </Text>
       </Pressable>
     );
@@ -52,69 +56,66 @@ export function FuelPicker({ fuel, language, layout, onChange, overview }: FuelP
         horizontal
         showsHorizontalScrollIndicator={false}
       >
-        {chips}
+        {items}
       </ScrollView>
     );
   }
 
   return (
-    <View accessibilityLabel={t.label} accessibilityRole="radiogroup" style={styles.grid}>
-      {chips}
+    <View accessibilityLabel={t.label} accessibilityRole="radiogroup" style={styles.row}>
+      {items}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  chip: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  chipActive: {
-    backgroundColor: colors.ink,
-    borderColor: colors.ink,
-  },
-  chipGrid: {
-    flexBasis: '30%',
-    flexGrow: 1,
-  },
-  chipHovered: {
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.borderStrong,
-  },
-  chipScroll: {
+  item: {
+    alignItems: 'center',
     borderColor: 'transparent',
-    minWidth: 86,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    gap: 3,
+    paddingBottom: 6,
+    paddingTop: 8,
+    transitionDuration: motion.duration,
+    transitionProperty: 'background-color, border-color',
+  } as never,
+  itemActive: {
+    backgroundColor: colors.blueTint,
+    borderColor: colors.blue,
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  itemHovered: {
+    backgroundColor: colors.ground,
+  },
+  itemRow: {
+    flex: 1,
+    minWidth: 0,
+  },
+  itemScroll: {
+    minWidth: 74,
+    paddingHorizontal: 6,
   },
   label: {
-    color: colors.text,
-    fontFamily: fonts.bold,
-    fontSize: 14,
-  },
-  labelActive: {
-    color: colors.white,
-  },
-  meta: {
-    color: colors.textSubtle,
-    fontFamily: fonts.regular,
-    fontSize: 11.5,
-    fontVariant: ['tabular-nums'],
+    color: colors.black,
+    fontFamily: fonts.semibold,
+    fontSize: type.small,
     marginTop: 2,
   },
-  metaActive: {
-    color: 'rgba(255, 255, 255, 0.72)',
+  labelActive: {
+    color: colors.blue,
+  },
+  meta: {
+    color: colors.greyLight,
+    fontFamily: fonts.regular,
+    fontSize: type.meta,
+    fontVariant: ['tabular-nums'],
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 2,
   },
   scrollContent: {
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    gap: 2,
+    paddingHorizontal: 8,
   },
 });

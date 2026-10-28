@@ -1,11 +1,8 @@
 <svg width="256" height="256" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="ps-bg" x1="6" y1="2" x2="58" y2="62" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#14C98E" />
-      <stop offset="1" stop-color="#047857" />
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="16" fill="url(#ps-bg)" />
-  <path d="M32 54C26 47 17 37 17 25a15 15 0 0 1 30 0c0 12-9 22-15 29Z" fill="#FFFFFF" />
-  <path d="M32 15c-2 3-6.5 8.5-6.5 13.5a6.5 6.5 0 0 0 13 0C38.5 23.5 34 18 32 15Z" fill="#059669" />
+  <rect width="64" height="64" rx="10" fill="#0A4A8F"/>
+  <rect x="4.5" y="4.5" width="55" height="55" rx="6.5" stroke="#FFFFFF" stroke-width="3"/>
+  <path d="M17 49V18.5A3.5 3.5 0 0 1 20.5 15h13A3.5 3.5 0 0 1 37 18.5V49Z" fill="#FFFFFF"/>
+  <rect x="14" y="46" width="26" height="4.5" rx="1.5" fill="#FFFFFF"/>
+  <rect x="20.5" y="19.5" width="13" height="8.5" rx="1.5" fill="#008351"/>
+  <path d="M37 27h3.5a3 3 0 0 1 3 3v9.5a2.75 2.75 0 0 0 5.5 0V25.5l-4.5-5" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

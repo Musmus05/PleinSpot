@@ -1,8 +1,15 @@
 import { unzipSync } from 'fflate';
 import { XMLParser } from 'fast-xml-parser';
 
-const API_URL = 'https://donnees.roulez-eco.fr/opendata/instantane';
-const REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+import { getStationMeta } from './stationMetaService.mjs';
+
+// Same feed as `instantane`, plus the <rupture> elements (the plain feed ships none).
+// FUEL_FEED_URL lets a staging server or a test point at a copy of the feed.
+const API_URL = process.env.FUEL_FEED_URL || 'https://donnees.roulez-eco.fr/opendata/instantane_ruptures';
+// The ministry rebuilds the feed every 10 minutes. Checking every minute with a conditional
+// request (an unchanged feed answers 304, a few hundred bytes) picks each build up within a minute.
+const POLL_INTERVAL_MS = 60 * 1000;
+const STALE_AFTER_MS = 15 * 60 * 1000;
 const MIN_FORCED_REFRESH_GAP_MS = 60 * 1000;
 const UPSTREAM_TIMEOUT_MS = 45 * 1000;
 const LAT_LON_SCALE = 100000;
@@ -10,9 +17,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // Prices older than this are almost always stations that stopped declaring: showing them
 // would push misleading "cheap" prices to the top of the comparison.
 const MAX_PRICE_AGE_MS = 30 * DAY_MS;
+// "Temporary" shortages declared months ago are, in practice, fuels the station no longer sells.
+const MAX_RUPTURE_AGE_MS = 30 * DAY_MS;
 const MIN_VALID_PRICE = 0.3;
 const MAX_VALID_PRICE = 5;
 const MIN_REGION_DELTA = 0.01;
+const DISTRIBUTION_BINS = 24;
 
 export const FUEL_KEYS = ['gazole', 'e10', 'sp95', 'sp98', 'e85', 'gplc'];
 
@@ -32,6 +42,9 @@ let snapshot = null;
 let inflightLoad = null;
 let lastLoadStartedAt = 0;
 let refreshTimer = null;
+const updateListeners = new Set();
+// Validators of the last downloaded archive: an unchanged feed answers 304 and costs nothing.
+let feedValidators = { etag: null, lastModified: null };
 
 const parser = new XMLParser({
   allowBooleanAttributes: true,
@@ -54,19 +67,27 @@ export function startFuelDataRefresh() {
     loadSnapshot().catch((error) => {
       console.error('[fuel] background refresh failed:', error.message);
     });
-  }, REFRESH_INTERVAL_MS);
+  }, POLL_INTERVAL_MS);
   refreshTimer.unref?.();
+}
+
+/** Called with { fetchedAt, publishedAt, changedPrices } every time new official data arrives. */
+export function onPricesUpdate(listener) {
+  updateListeners.add(listener);
+
+  return () => updateListeners.delete(listener);
 }
 
 export function getDataStatus() {
   return {
     fetchedAt: snapshot?.fetchedAt ?? null,
+    publishedAt: snapshot?.publishedAt ?? null,
     stationCount: snapshot?.stations.length ?? 0,
   };
 }
 
 export async function fetchStationsInRegion({ forceRefresh = false, fuel, limit, region }) {
-  const { fetchedAt, national, stations } = await getSnapshot({ forceRefresh });
+  const { fetchedAt, national, publishedAt, stations } = await getSnapshot({ forceRefresh });
   const bounds = getRegionBounds(region);
   const inBounds = [];
   const overviewValues = Object.fromEntries(FUEL_KEYS.map((key) => [key, []]));
@@ -104,11 +125,13 @@ export async function fetchStationsInRegion({ forceRefresh = false, fuel, limit,
   );
 
   return {
+    distribution: computeDistribution(overviewValues[fuel], DISTRIBUTION_BINS),
     fetchedAt,
     fuel,
     national: national[fuel] ?? null,
     overview,
-    stations: matching.slice(0, limit),
+    publishedAt,
+    stations: matching.slice(0, limit).map(withMeta),
     stats,
     total: matching.length,
   };
@@ -118,7 +141,11 @@ export async function getStationById(id) {
   const { byId, fetchedAt } = await getSnapshot();
   const station = byId.get(id) ?? null;
 
-  return station ? { fetchedAt, station } : null;
+  return station ? { fetchedAt, station: withMeta(station) } : null;
+}
+
+function withMeta(station) {
+  return { ...station, ...getStationMeta(station.id) };
 }
 
 async function getSnapshot({ forceRefresh = false } = {}) {
@@ -133,7 +160,7 @@ async function getSnapshot({ forceRefresh = false } = {}) {
     return loadSnapshot().catch(() => snapshot);
   }
 
-  if (age > REFRESH_INTERVAL_MS) {
+  if (age > STALE_AFTER_MS) {
     // Serve the current data right away and refresh in the background.
     loadSnapshot().catch((error) => {
       console.error('[fuel] stale refresh failed:', error.message);
@@ -148,9 +175,21 @@ function loadSnapshot() {
     lastLoadStartedAt = Date.now();
     inflightLoad = downloadSnapshot()
       .then((nextSnapshot) => {
-        snapshot = nextSnapshot;
-        console.log(`[fuel] ${nextSnapshot.stations.length} stations loaded`);
-        return nextSnapshot;
+        if (nextSnapshot) {
+          const previous = snapshot;
+          const changedPrices = previous ? countChangedPrices(previous, nextSnapshot) : 0;
+
+          snapshot = nextSnapshot;
+          console.log(`[fuel] ${nextSnapshot.stations.length} stations loaded, ${changedPrices} prices changed`);
+
+          if (previous) {
+            notifyUpdate({ changedPrices, fetchedAt: snapshot.fetchedAt, publishedAt: snapshot.publishedAt });
+          }
+        } else {
+          snapshot.loadedAt = Date.now();
+        }
+
+        return snapshot;
       })
       .finally(() => {
         inflightLoad = null;
@@ -160,15 +199,36 @@ function loadSnapshot() {
   return inflightLoad;
 }
 
+/** Resolves to null when the feed has not changed since the current snapshot. */
 async function downloadSnapshot() {
+  const headers = {};
+
+  if (snapshot && feedValidators.etag) {
+    headers['If-None-Match'] = feedValidators.etag;
+  }
+
+  if (snapshot && feedValidators.lastModified) {
+    headers['If-Modified-Since'] = feedValidators.lastModified;
+  }
+
   const response = await fetch(API_URL, {
     cache: 'no-store',
+    headers,
     signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
   });
+
+  if (response.status === 304) {
+    return null;
+  }
 
   if (!response.ok) {
     throw new Error(`Official fuel feed unavailable: ${response.status} ${response.statusText}`);
   }
+
+  feedValidators = {
+    etag: response.headers.get('etag'),
+    lastModified: response.headers.get('last-modified'),
+  };
 
   const zipBytes = new Uint8Array(await response.arrayBuffer());
   const files = unzipSync(zipBytes);
@@ -198,13 +258,43 @@ async function downloadSnapshot() {
     ]),
   );
 
+  const lastModified = Date.parse(feedValidators.lastModified ?? '');
+
   return {
     byId: new Map(stations.map((station) => [station.id, station])),
     fetchedAt: new Date(now).toISOString(),
     loadedAt: now,
     national,
+    // When the ministry built this file: what visitors care about, rather than our download time.
+    publishedAt: new Date(Number.isFinite(lastModified) ? lastModified : now).toISOString(),
     stations,
   };
+}
+
+function countChangedPrices(previous, next) {
+  let changed = 0;
+
+  for (const station of next.stations) {
+    const before = previous.byId.get(station.id);
+
+    for (const key of FUEL_KEYS) {
+      if (station.prices[key]?.value !== before?.prices[key]?.value) {
+        changed += 1;
+      }
+    }
+  }
+
+  return changed;
+}
+
+function notifyUpdate(update) {
+  for (const listener of updateListeners) {
+    try {
+      listener(update);
+    } catch (error) {
+      console.error('[fuel] update listener failed:', error.message);
+    }
+  }
 }
 
 function mapStation(raw, now) {
@@ -267,14 +357,24 @@ function mapStation(raw, now) {
     id,
     postcode: postcode || '—',
     prices,
+    // A "définitive" rupture only means the station stopped selling that fuel (often years
+    // ago): it is shown as "not sold". Only recent, ongoing temporary shortages are flagged.
     ruptures: ensureArray(raw.rupture)
       .map((rupture) => ({
         fuel: FUEL_NAME_TO_KEY[rupture.nom] ?? null,
+        isOngoing: rupture.type === 'temporaire' && !rupture.fin,
         label: normalizeText(rupture.nom),
         since: parisLocalToIso(rupture.debut),
-        type: rupture.type === 'definitive' ? 'definitive' : rupture.type === 'temporaire' ? 'temporaire' : null,
       }))
-      .filter((rupture) => rupture.label),
+      .filter(
+        (rupture) =>
+          rupture.isOngoing &&
+          rupture.label &&
+          !(rupture.fuel && prices[rupture.fuel]) &&
+          rupture.since &&
+          now - Date.parse(rupture.since) < MAX_RUPTURE_AGE_MS,
+      )
+      .map(({ fuel, label, since }) => ({ fuel, label, since, type: 'temporaire' })),
     schedule: parseSchedule(raw.horaires?.jour),
     services: ensureArray(raw.services?.service).map(normalizeText).filter(Boolean),
   };
@@ -347,6 +447,26 @@ function computeStats(values) {
     p33: round3(quantile(sorted, 1 / 3)),
     p66: round3(quantile(sorted, 2 / 3)),
   };
+}
+
+// Price histogram of the area, drawn as the strip under the area summary.
+function computeDistribution(values, binCount) {
+  if (values.length === 0) {
+    return null;
+  }
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min;
+  const bins = new Array(span < 0.001 ? 1 : binCount).fill(0);
+
+  for (const value of values) {
+    const index = span < 0.001 ? 0 : Math.min(bins.length - 1, Math.floor(((value - min) / span) * bins.length));
+
+    bins[index] += 1;
+  }
+
+  return { bins, max, min };
 }
 
 function quantile(sorted, ratio) {

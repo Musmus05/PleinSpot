@@ -2,17 +2,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { searchCities } from '../lib/api';
-import { formatStationName } from '../lib/brands';
+import { getBrandLabel, getStationTitle } from '../lib/brands';
 import { AppLanguage, copy } from '../lib/copy';
 import type { FuelKey } from '../lib/fuels';
 import { getPriceTier } from '../lib/pricing';
-import type { CitySearchResult, PriceStats, Station, StationDetails } from '../types/station';
-import { colors, fonts, radius, shadows, tierColors } from '../theme';
+import type { CitySearchResult, PriceStats, Station } from '../types/station';
+import { colors, fonts, radius, shadows, type } from '../theme';
 import { Fuel, LocateFixed, MapPin, Search, X } from './icons';
-import { PumpPrice } from './PumpPrice';
+import { PriceSlat } from './PriceSlat';
 
 type SearchBoxProps = {
-  details: Record<number, StationDetails | null>;
   fuel: FuelKey;
   language: AppLanguage;
   onSelectCity: (city: CitySearchResult) => void;
@@ -31,7 +30,6 @@ const MIN_QUERY_LENGTH = 2;
 const CITY_SEARCH_DEBOUNCE_MS = 220;
 
 export function SearchBox({
-  details,
   fuel,
   language,
   onSelectCity,
@@ -90,15 +88,14 @@ export function SearchBox({
 
     return stations
       .filter((station) => {
-        const stationDetails = details[station.id];
         const haystack = normalize(
-          `${stationDetails?.name ?? ''} ${stationDetails?.brand ?? ''} ${station.address} ${station.city} ${station.postcode}`,
+          `${station.name ?? ''} ${getBrandLabel(station.brand) ?? ''} ${station.address} ${station.city} ${station.postcode}`,
         );
 
         return haystack.includes(needle);
       })
       .slice(0, 4);
-  }, [details, hasQuery, stations, trimmedQuery]);
+  }, [hasQuery, stations, trimmedQuery]);
 
   const items: ResultItem[] = hasQuery
     ? [
@@ -156,7 +153,7 @@ export function SearchBox({
   return (
     <View style={styles.container}>
       <View style={[styles.inputShell, isFocused && styles.inputShellFocused]}>
-        <Search color={isFocused ? colors.brand : colors.textSubtle} size={18} />
+        <Search color={isFocused ? colors.blue : colors.grey} size={18} />
         <TextInput
           accessibilityLabel={t.placeholder}
           autoComplete="off"
@@ -176,13 +173,13 @@ export function SearchBox({
           onKeyPress={(event) => handleKeyPress(event.nativeEvent.key)}
           onSubmitEditing={() => choose(items[activeIndex])}
           placeholder={t.placeholder}
-          placeholderTextColor={colors.textSubtle}
+          placeholderTextColor={colors.greyLight}
           ref={inputRef}
-          selectionColor={colors.brand}
+          selectionColor={colors.blue}
           style={styles.input}
           value={query}
         />
-        {isSearching ? <ActivityIndicator color={colors.textSubtle} size="small" /> : null}
+        {isSearching ? <ActivityIndicator color={colors.grey} size="small" /> : null}
         {query ? (
           <Pressable
             accessibilityLabel={t.clear}
@@ -194,7 +191,7 @@ export function SearchBox({
             }}
             style={styles.clearButton}
           >
-            <X color={colors.textMuted} size={14} strokeWidth={2.6} />
+            <X color={colors.grey} size={16} strokeWidth={2.4} />
           </Pressable>
         ) : null}
       </View>
@@ -217,7 +214,7 @@ export function SearchBox({
                     onPress={() => choose(item)}
                     style={[styles.row, isActive && styles.rowActive]}
                   >
-                    <ResultRow details={details} fuel={fuel} item={item} language={language} stats={stats} />
+                    <ResultRow fuel={fuel} item={item} language={language} stats={stats} />
                   </Pressable>
                 </View>
               );
@@ -230,13 +227,11 @@ export function SearchBox({
 }
 
 function ResultRow({
-  details,
   fuel,
   item,
   language,
   stats,
 }: {
-  details: Record<number, StationDetails | null>;
   fuel: FuelKey;
   item: ResultItem;
   language: AppLanguage;
@@ -247,10 +242,8 @@ function ResultRow({
   if (item.kind === 'location') {
     return (
       <>
-        <View style={[styles.rowIcon, styles.rowIconBrand]}>
-          <LocateFixed color={colors.brand} size={16} />
-        </View>
-        <Text style={[styles.rowTitle, styles.rowTitleBrand]}>{t.useMyLocation}</Text>
+        <LocateFixed color={colors.blue} size={18} />
+        <Text style={[styles.rowTitle, styles.rowTitleAction]}>{t.useMyLocation}</Text>
       </>
     );
   }
@@ -258,9 +251,7 @@ function ResultRow({
   if (item.kind === 'city') {
     return (
       <>
-        <View style={styles.rowIcon}>
-          <MapPin color={colors.textMuted} size={16} />
-        </View>
+        <MapPin color={colors.grey} size={18} />
         <View style={styles.rowCopy}>
           <Text numberOfLines={1} style={styles.rowTitle}>
             {item.city.label}
@@ -277,23 +268,21 @@ function ResultRow({
 
   const { station } = item;
   const price = station.prices[fuel];
-  const name = formatStationName(details[station.id]?.name);
+  const name = getStationTitle(station);
 
   return (
     <>
-      <View style={styles.rowIcon}>
-        <Fuel color={colors.textMuted} size={16} />
-      </View>
+      <Fuel color={colors.grey} size={18} />
       <View style={styles.rowCopy}>
         <Text numberOfLines={1} style={styles.rowTitle}>
-          {name ?? station.city}
+          {name}
         </Text>
         <Text numberOfLines={1} style={styles.rowSubtitle}>
           {station.address} · {station.city}
         </Text>
       </View>
       {price ? (
-        <PumpPrice color={tierColors[getPriceTier(price.value, stats)].text} language={language} size={15} value={price.value} />
+        <PriceSlat language={language} size="sm" tier={getPriceTier(price.value, stats)} value={price.value} />
       ) : null}
     </>
   );
@@ -311,44 +300,40 @@ function normalize(value: string) {
 const styles = StyleSheet.create({
   clearButton: {
     alignItems: 'center',
-    backgroundColor: colors.surfaceSunken,
-    borderRadius: radius.pill,
-    height: 22,
+    height: 28,
     justifyContent: 'center',
-    width: 22,
+    width: 28,
   },
   container: {
     position: 'relative',
     zIndex: 20,
   },
   dropdown: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
+    backgroundColor: colors.white,
+    borderRadius: radius.control,
     left: 0,
     overflow: 'hidden',
     position: 'absolute',
     right: 0,
-    top: 56,
+    top: 52,
   },
   dropdownScroll: {
-    maxHeight: 380,
+    maxHeight: 400,
     paddingVertical: 6,
   },
   empty: {
-    color: colors.textSubtle,
+    color: colors.grey,
     fontFamily: fonts.regular,
-    fontSize: 14,
+    fontSize: type.small,
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
   input: {
-    color: colors.text,
+    color: colors.black,
     flex: 1,
-    fontFamily: fonts.semibold,
+    fontFamily: fonts.medium,
     // 16px keeps iOS Safari from zooming in on focus.
-    fontSize: 16,
+    fontSize: type.body,
     height: '100%',
     minWidth: 0,
     outlineStyle: 'none',
@@ -356,68 +341,51 @@ const styles = StyleSheet.create({
   } as never,
   inputShell: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.lg,
-    borderWidth: 1,
+    backgroundColor: colors.white,
+    borderRadius: radius.control,
     flexDirection: 'row',
     gap: 10,
-    height: 50,
-    paddingHorizontal: 14,
+    height: 46,
+    paddingLeft: 12,
+    paddingRight: 6,
   },
   inputShellFocused: {
-    borderColor: colors.brand,
-    boxShadow: '0 0 0 4px rgba(5, 150, 105, 0.14)',
+    boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.45)',
   },
   row: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
-    marginHorizontal: 6,
-    borderRadius: radius.md,
-    paddingHorizontal: 10,
+    paddingHorizontal: 14,
     paddingVertical: 9,
   },
   rowActive: {
-    backgroundColor: colors.surfaceSunken,
+    backgroundColor: colors.blueTint,
   },
   rowCopy: {
     flex: 1,
     minWidth: 0,
   },
-  rowIcon: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceSunken,
-    borderRadius: radius.md,
-    height: 34,
-    justifyContent: 'center',
-    width: 34,
-  },
-  rowIconBrand: {
-    backgroundColor: colors.brandSoft,
-  },
   rowSubtitle: {
-    color: colors.textSubtle,
+    color: colors.grey,
     fontFamily: fonts.regular,
-    fontSize: 13,
+    fontSize: type.meta,
     marginTop: 1,
   },
   rowTitle: {
-    color: colors.text,
+    color: colors.black,
     fontFamily: fonts.semibold,
-    fontSize: 14,
+    fontSize: type.small,
   },
-  rowTitleBrand: {
-    color: colors.brandStrong,
+  rowTitleAction: {
+    color: colors.blue,
   },
   sectionHeader: {
-    color: colors.textSubtle,
+    color: colors.greyLight,
     fontFamily: fonts.semibold,
-    fontSize: 11,
-    letterSpacing: 0.6,
-    paddingBottom: 4,
-    paddingHorizontal: 16,
+    fontSize: type.meta,
+    paddingBottom: 2,
+    paddingHorizontal: 14,
     paddingTop: 10,
-    textTransform: 'uppercase',
   },
 });

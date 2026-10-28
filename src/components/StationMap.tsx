@@ -8,10 +8,10 @@ import { StyleSheet, View } from 'react-native';
 import type { AppLanguage } from '../lib/copy';
 import { splitPrice } from '../lib/format';
 import type { FuelKey } from '../lib/fuels';
-import { getPriceTier, isPriceStale, PriceTier } from '../lib/pricing';
+import { getPriceChange, getPriceTier, isPriceStale, PriceChanges, PriceTier } from '../lib/pricing';
 import type { LatLng, PriceStats, Station } from '../types/station';
 import type { MapRegion, MapView } from '../types/map';
-import { colors, fonts, tierColors } from '../theme';
+import { colors, fonts, motion, radius, shadows, tierColors } from '../theme';
 
 export type MapPadding = { bottom: number; left: number; right: number; top: number };
 
@@ -21,7 +21,10 @@ export type MapViewportRequest = {
 };
 
 type StationMapProps = {
-  bestStationId: number | null;
+  /** Prices that just moved: their slats flash once, then keep an arrow. */
+  changes: PriceChanges;
+  /** Lowest price of the area: every station at that price gets the double rule. */
+  bestPrice: number | null;
   compact: boolean;
   fuel: FuelKey;
   highlightedStationId: number | null;
@@ -47,7 +50,8 @@ const TILE_ATTRIBUTION =
 const WORLD_BOUNDS = L.latLngBounds([-85, -180], [85, 180]);
 
 export function StationMap({
-  bestStationId,
+  bestPrice,
+  changes,
   compact,
   fuel,
   highlightedStationId,
@@ -92,7 +96,8 @@ export function StationMap({
           viewport={viewport}
         />
         <StationMarkers
-          bestStationId={bestStationId}
+          bestPrice={bestPrice}
+          changes={changes}
           compact={compact}
           fuel={fuel}
           highlightedStationId={highlightedStationId}
@@ -184,7 +189,8 @@ function MapBehaviour({
 type MarkerLayout = { dots: Station[]; labeled: Station[] };
 
 function StationMarkers({
-  bestStationId,
+  bestPrice,
+  changes,
   compact,
   fuel,
   highlightedStationId,
@@ -195,7 +201,8 @@ function StationMarkers({
   stats,
 }: Pick<
   StationMapProps,
-  | 'bestStationId'
+  | 'bestPrice'
+  | 'changes'
   | 'compact'
   | 'fuel'
   | 'highlightedStationId'
@@ -274,7 +281,7 @@ function StationMarkers({
             center={[station.coordinates.latitude, station.coordinates.longitude]}
             eventHandlers={getHandlers(station)}
             key={`dot-${station.id}`}
-            pathOptions={{ color: colors.white, fillColor: tierColors[tier].solid, fillOpacity: 1, opacity: 1, weight: 1.5 }}
+            pathOptions={{ color: colors.white, fillColor: tierColors[tier].fill, fillOpacity: 1, opacity: 1, weight: 1.5 }}
             radius={compact ? 4.5 : 5}
           />
         );
@@ -282,12 +289,16 @@ function StationMarkers({
       {layout.labeled.map((station) => {
         const price = station.prices[fuel] ?? null;
         const isSelected = station.id === selectedStation?.id;
+        const isBest = bestPrice != null && price?.value === bestPrice;
+        const change = getPriceChange(changes, station.id, fuel);
 
         return (
           <StationMarker
             handlers={getHandlers(station)}
             icon={getMarkerIcon({
-              best: station.id === bestStationId,
+              best: isBest,
+              change: change ? (change.to < change.from ? 'down' : 'up') : null,
+              flash: change != null && Date.now() - change.at < FLASH_MS,
               compact,
               highlighted: station.id === highlightedStationId,
               language,
@@ -298,7 +309,7 @@ function StationMarkers({
             })}
             key={station.id}
             position={station.coordinates}
-            zIndexOffset={isSelected ? 2000 : station.id === highlightedStationId ? 1500 : station.id === bestStationId ? 1000 : 0}
+            zIndexOffset={isSelected ? 2000 : station.id === highlightedStationId ? 1500 : isBest ? 1000 : 0}
           />
         );
       })}
@@ -329,12 +340,23 @@ const StationMarker = memo(function StationMarker({
   );
 });
 
-const MARKER = { height: 28, width: 70 };
-const COMPACT_MARKER = { height: 26, width: 62 };
+const MARKER = { height: 24, width: 58 };
+const COMPACT_MARKER = { height: 22, width: 52 };
 const iconCache = new Map<string, L.DivIcon>();
+// A price that just changed flashes for this long after the update arrives.
+const FLASH_MS = 90 * 1000;
+const CHANGE_ARROWS = {
+  down: '<svg class="ps-slat__arrow" viewBox="0 0 8 8" aria-hidden="true"><path d="M4 7.5 0.5 1.5h7z" fill="currentColor"/></svg>',
+  up: '<svg class="ps-slat__arrow" viewBox="0 0 8 8" aria-hidden="true"><path d="M4 0.5 7.5 6.5h-7z" fill="currentColor"/></svg>',
+};
+// White outline separating a slat from the map, and the lift under it.
+const OUTLINE = '0 0 0 1.5px #fff';
+const LIFT = '0 2px 5px rgba(22,24,27,.32)';
 
 function getMarkerIcon(options: {
   best: boolean;
+  change: 'down' | 'up' | null;
+  flash: boolean;
   compact: boolean;
   highlighted: boolean;
   language: AppLanguage;
@@ -350,25 +372,27 @@ function getMarkerIcon(options: {
     return cached;
   }
 
-  const { best, compact, highlighted, language, price, selected, stale, tier } = options;
+  const { best, change, compact, flash, highlighted, language, price, selected, stale, tier } = options;
   const label = price == null ? '—' : (() => {
     const { head, tail } = splitPrice(price, language);
 
     return `${head}<small>${tail}</small>`;
   })();
   const classes = [
-    'ps-marker',
-    `ps-marker--${tier}`,
+    'ps-slat',
+    `ps-slat--${tier}`,
     compact && 'is-compact',
+    best && !stale && 'is-best',
     selected && 'is-selected',
     highlighted && 'is-highlighted',
     stale && 'is-stale',
+    flash && 'is-flash',
   ]
     .filter(Boolean)
     .join(' ');
   const icon = L.divIcon({
     className: 'ps-marker-host',
-    html: `<div class="${classes}">${label}${best ? '<span class="ps-marker__star" aria-hidden="true">★</span>' : ''}</div>`,
+    html: `<div class="${classes}">${label}${change ? CHANGE_ARROWS[change] : ''}</div>`,
     iconAnchor: [0, 0],
     iconSize: [0, 0],
   });
@@ -379,7 +403,7 @@ function getMarkerIcon(options: {
 
 const USER_ICON = L.divIcon({
   className: 'ps-marker-host',
-  html: '<div class="ps-user"><span class="ps-user__pulse"></span><span class="ps-user__dot"></span></div>',
+  html: '<div class="ps-user"><span class="ps-user__halo"></span><span class="ps-user__dot"></span></div>',
   iconAnchor: [0, 0],
   iconSize: [0, 0],
 });
@@ -415,8 +439,17 @@ function injectMapStyles() {
     return;
   }
 
+  // One rule per tier: fill, ink, and the inner rule used by the lowest price.
   const tierRules = (Object.keys(tierColors) as PriceTier[])
-    .map((tier) => `.ps-marker--${tier}{background:${tierColors[tier].solid}}`)
+    .map((tier) => {
+      const { fill, ink, text } = tierColors[tier];
+
+      return [
+        `.ps-slat--${tier}{background:${fill};color:${ink}}`,
+        `.ps-slat--${tier}.is-best{box-shadow:inset 0 0 0 2px ${fill},inset 0 0 0 3.5px ${ink},${OUTLINE},${LIFT}}`,
+        `.ps-slat--${tier}.is-stale{background:#fff;color:${text};box-shadow:inset 0 0 0 1.5px ${fill},${OUTLINE},${LIFT}}`,
+      ].join('');
+    })
     .join('');
   const style = document.createElement('style');
 
@@ -425,24 +458,25 @@ function injectMapStyles() {
 .leaflet-container{background:#EEF0EC;font-family:${fonts.regular},system-ui,sans-serif;outline:none}
 .ps-tiles{filter:saturate(.55) brightness(1.04) contrast(.96)}
 .ps-marker-host{background:none;border:0}
-.ps-marker{position:absolute;left:0;bottom:0;transform:translate(-50%,-8px);display:flex;align-items:flex-start;padding:6px 9px 6px 10px;border-radius:999px;color:#fff;font-family:${fonts.bold},system-ui,sans-serif;font-size:13px;line-height:1;letter-spacing:-.2px;white-space:nowrap;font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px #fff,0 3px 10px rgba(16,24,40,.28);cursor:pointer;transition:transform .14s ease,background-color .14s ease;user-select:none}
-.ps-marker small{font-size:9px;margin-left:.5px;margin-top:-.5px}
-.ps-marker::after{content:'';position:absolute;left:50%;bottom:-4px;width:9px;height:9px;background:inherit;transform:translateX(-50%) rotate(45deg);border-radius:0 0 3px 0;box-shadow:2px 2px 0 0 #fff;z-index:-1}
-.ps-marker.is-compact{padding:5px 8px 5px 9px;font-size:12px}
+.ps-slat{position:absolute;left:0;bottom:0;transform:translate(-50%,-7px);display:flex;align-items:flex-start;padding:3px 6px 2px;border-radius:${radius.slat}px;font-family:${fonts.condensedBold},system-ui,sans-serif;font-size:16px;line-height:1.05;white-space:nowrap;font-variant-numeric:tabular-nums;box-shadow:${OUTLINE},${LIFT};cursor:pointer;transition:transform ${motion.duration} ${motion.easing};user-select:none}
+.ps-slat small{font-size:10px;margin-left:1px;margin-top:1px}
+.ps-slat::after{content:'';position:absolute;left:50%;bottom:-6px;margin-left:-5px;border-style:solid;border-width:6px 5px 0;border-color:#fff transparent transparent}
+.ps-slat.is-compact{font-size:15px;padding:2px 5px 2px}
 ${tierRules}
-.ps-marker:hover,.ps-marker.is-highlighted{transform:translate(-50%,-8px) scale(1.12)}
-.ps-marker.is-selected{background:${colors.ink};transform:translate(-50%,-10px) scale(1.2);box-shadow:0 0 0 2.5px #fff,0 6px 18px rgba(16,24,40,.4)}
-.ps-marker.is-stale{opacity:.78}
-.ps-marker__star{position:absolute;top:-9px;right:-9px;width:18px;height:18px;border-radius:999px;background:${colors.star};color:#713F12;font-size:11px;line-height:18px;text-align:center;box-shadow:0 0 0 2px #fff}
+.ps-slat:hover,.ps-slat.is-highlighted{transform:translate(-50%,-7px) scale(1.12)}
+.ps-slat.is-selected{background:${colors.blue};color:#fff;transform:translate(-50%,-9px) scale(1.22);box-shadow:${OUTLINE},0 4px 14px rgba(22,24,27,.38)}
 .ps-user{position:absolute;left:0;top:0}
-.ps-user__dot{position:absolute;left:-8px;top:-8px;width:16px;height:16px;border-radius:999px;background:${colors.user};box-shadow:0 0 0 3px #fff,0 2px 8px rgba(37,99,235,.5)}
-.ps-user__pulse{position:absolute;left:-22px;top:-22px;width:44px;height:44px;border-radius:999px;background:rgba(37,99,235,.18);animation:ps-pulse 2s ease-out infinite}
-@keyframes ps-pulse{0%{transform:scale(.4);opacity:1}100%{transform:scale(1.4);opacity:0}}
-.leaflet-control-zoom{border:0!important;border-radius:12px!important;overflow:hidden;box-shadow:0 8px 24px -6px rgba(16,24,40,.22),0 0 0 1px rgba(16,24,40,.06)!important;margin:0 16px 16px 0!important}
-.leaflet-control-zoom a{width:40px!important;height:40px!important;line-height:40px!important;font-size:20px!important;color:${colors.inkSoft}!important;border-bottom-color:${colors.border}!important}
-.leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.78)!important;border-radius:8px 0 0 0;padding:1px 6px!important}
-.leaflet-control-attribution a{color:${colors.textMuted}!important}
-@media (prefers-reduced-motion:reduce){.ps-marker{transition:none}.ps-user__pulse{animation:none}}
+.ps-user__dot{position:absolute;left:-7px;top:-7px;width:14px;height:14px;border-radius:50%;background:${colors.blue};box-shadow:0 0 0 3px #fff,0 1px 4px rgba(22,24,27,.4)}
+.ps-user__halo{position:absolute;left:-20px;top:-20px;width:40px;height:40px;border-radius:50%;background:rgba(10,74,143,.14)}
+.leaflet-control-zoom{border:0!important;border-radius:${radius.control}px!important;overflow:hidden;box-shadow:${shadows.floating.boxShadow}!important;margin:0 16px 16px 0!important}
+.leaflet-control-zoom a{width:40px!important;height:40px!important;line-height:40px!important;font-size:20px!important;color:${colors.black}!important;border-bottom-color:${colors.rule}!important}
+.leaflet-control-zoom a:hover{background:${colors.ground}!important}
+.leaflet-control-attribution{font-family:${fonts.regular},system-ui,sans-serif;font-size:11px;background:rgba(255,255,255,.85)!important;padding:1px 6px!important}
+.leaflet-control-attribution a{color:${colors.grey}!important}
+.ps-slat__arrow{width:8px;height:8px;margin:4px 0 0 3px}
+.ps-slat.is-flash{animation:ps-flash 1.1s ease-out 3}
+@keyframes ps-flash{0%{box-shadow:${OUTLINE},0 0 0 0 rgba(10,74,143,.6),${LIFT}}100%{box-shadow:${OUTLINE},0 0 0 14px rgba(10,74,143,0),${LIFT}}}
+@media (prefers-reduced-motion:reduce){.ps-slat{transition:none}.ps-slat.is-flash{animation:none}}
 `;
   document.head.appendChild(style);
 }
