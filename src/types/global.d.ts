@@ -6,8 +6,12 @@ declare namespace NodeJS {
   }
 }
 
-declare const process:
-  | {
-      env: NodeJS.ProcessEnv;
-    }
-  | undefined;
+// Expo inlines `process.env.EXPO_PUBLIC_*` at build time.
+declare const process: {
+  env: NodeJS.ProcessEnv;
+};
+
+interface Window {
+  gtag?: (...args: unknown[]) => void;
+  psOpenConsent?: () => void;
+}

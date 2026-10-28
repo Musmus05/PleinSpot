@@ -1,18 +1,63 @@
 <!DOCTYPE html>
-<html lang="%LANG_ISO_CODE%">
+<html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>%WEB_TITLE%</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>PleinSpot — Prix des carburants les moins chers autour de vous</title>
+    <meta
+      name="description"
+      content="Comparez en temps réel les prix du gazole, SP95-E10, SP95, SP98, E85 et GPL dans toutes les stations-service de France. Données officielles, carte interactive, horaires et itinéraire en un clic."
+    />
+    <meta name="theme-color" content="#FFFFFF" />
+    <meta name="application-name" content="PleinSpot" />
+    <meta name="apple-mobile-web-app-title" content="PleinSpot" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="canonical" href="__ORIGIN__/" />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="PleinSpot" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:url" content="__ORIGIN__/" />
+    <meta property="og:title" content="PleinSpot — Le carburant le moins cher, en un coup d'œil" />
+    <meta
+      property="og:description"
+      content="Tous les prix officiels des stations-service de France sur une carte. Trouvez la station la moins chère autour de vous."
+    />
+    <meta property="og:image" content="__ORIGIN__/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "PleinSpot",
+        "applicationCategory": "TravelApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "fr-FR",
+        "description": "Comparateur des prix des carburants en France à partir des données officielles du ministère de l'Économie.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+      }
+    </script>
+
     <style id="expo-reset">
       html,
       body {
         height: 100%;
+        margin: 0;
+        background: #ffffff;
+        -webkit-text-size-adjust: 100%;
+        -webkit-tap-highlight-color: transparent;
       }
 
       body {
         overflow: hidden;
+        overscroll-behavior: none;
       }
 
       #root {
@@ -20,11 +65,205 @@
         height: 100%;
         flex: 1;
       }
+
+      :focus-visible {
+        outline: 2px solid #059669;
+        outline-offset: 2px;
+      }
+
+      input:focus-visible {
+        outline: none;
+      }
+
+      .ps-splash {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+      }
+
+      .ps-splash svg {
+        width: 72px;
+        height: 72px;
+      }
+
+      .ps-splash span {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 3px solid #d1fadf;
+        border-top-color: #059669;
+        animation: ps-spin 0.8s linear infinite;
+      }
+
+      @keyframes ps-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      #ps-consent {
+        position: fixed;
+        z-index: 10000;
+        left: 16px;
+        bottom: 16px;
+        max-width: 380px;
+        padding: 16px 18px;
+        border-radius: 16px;
+        background: #0b1220;
+        color: #e4e7ec;
+        font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        box-shadow: 0 16px 40px -12px rgba(16, 24, 40, 0.45);
+      }
+
+      #ps-consent[hidden] {
+        display: none;
+      }
+
+      #ps-consent p {
+        margin: 0 0 12px;
+      }
+
+      #ps-consent strong {
+        color: #ffffff;
+      }
+
+      #ps-consent .ps-consent-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      #ps-consent button {
+        cursor: pointer;
+        border: 0;
+        border-radius: 10px;
+        padding: 9px 16px;
+        font: 600 14px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+
+      #ps-consent .ps-consent-refuse {
+        background: #1d2939;
+        color: #ffffff;
+      }
+
+      #ps-consent .ps-consent-accept {
+        background: #059669;
+        color: #ffffff;
+      }
+
+      @media (max-width: 600px) {
+        #ps-consent {
+          left: 12px;
+          right: 12px;
+          bottom: calc(12px + env(safe-area-inset-bottom));
+          max-width: none;
+        }
+      }
     </style>
   </head>
 
   <body>
     <noscript>Pour utiliser PleinSpot, activez JavaScript dans votre navigateur.</noscript>
-    <div id="root"></div>
+    <div id="root">
+      <div class="ps-splash" aria-label="Chargement de PleinSpot">
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <linearGradient id="ps-splash-bg" x1="6" y1="2" x2="58" y2="62" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#14C98E" />
+              <stop offset="1" stop-color="#047857" />
+            </linearGradient>
+          </defs>
+          <rect width="64" height="64" rx="16" fill="url(#ps-splash-bg)" />
+          <path d="M32 54C26 47 17 37 17 25a15 15 0 0 1 30 0c0 12-9 22-15 29Z" fill="#FFFFFF" />
+          <path d="M32 15c-2 3-6.5 8.5-6.5 13.5a6.5 6.5 0 0 0 13 0C38.5 23.5 34 18 32 15Z" fill="#059669" />
+        </svg>
+        <span></span>
+      </div>
+    </div>
+
+    <div id="ps-consent" role="dialog" aria-live="polite" aria-label="Mesure d'audience" hidden>
+      <p>
+        <strong>PleinSpot utilise Google Analytics</strong> pour mesurer son audience, uniquement si vous l'acceptez.
+        Aucune donnée n'est utilisée à des fins publicitaires.
+      </p>
+      <div class="ps-consent-actions">
+        <button type="button" class="ps-consent-refuse" data-consent="denied">Refuser</button>
+        <button type="button" class="ps-consent-accept" data-consent="granted">Accepter</button>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var STORAGE_KEY = 'pleinspot:analytics-consent';
+        var GA_ID = 'G-M2T76TW4ZJ';
+        var banner = document.getElementById('ps-consent');
+
+        function readChoice() {
+          try {
+            return localStorage.getItem(STORAGE_KEY);
+          } catch (error) {
+            return null;
+          }
+        }
+
+        function saveChoice(choice) {
+          try {
+            localStorage.setItem(STORAGE_KEY, choice);
+          } catch (error) {}
+        }
+
+        function loadAnalytics() {
+          window['ga-disable-' + GA_ID] = false;
+
+          if (window.gtag) {
+            return;
+          }
+
+          window.dataLayer = window.dataLayer || [];
+          window.gtag = function () {
+            window.dataLayer.push(arguments);
+          };
+          window.gtag('js', new Date());
+          window.gtag('config', GA_ID);
+
+          var script = document.createElement('script');
+          script.async = true;
+          script.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+          document.head.appendChild(script);
+        }
+
+        banner.addEventListener('click', function (event) {
+          var choice = event.target && event.target.getAttribute('data-consent');
+
+          if (!choice) {
+            return;
+          }
+
+          saveChoice(choice);
+          banner.hidden = true;
+
+          if (choice === 'granted') {
+            loadAnalytics();
+          } else {
+            window['ga-disable-' + GA_ID] = true;
+          }
+        });
+
+        window.psOpenConsent = function () {
+          banner.hidden = false;
+        };
+
+        var choice = readChoice();
+
+        if (choice === 'granted') {
+          loadAnalytics();
+        } else if (choice !== 'denied') {
+          banner.hidden = false;
+        }
+      })();
+    </script>
   </body>
 </html>

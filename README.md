@@ -6,26 +6,24 @@ Le projet a été réalisé comme prototype fonctionnel dans le cadre d’un pro
 
 ## Fonctionnalités
 
-- Carte interactive des stations-service.
-- Recherche par ville ou par station.
-- Filtrage par carburant : Gazole, SP95, E10, SP98, E85 et GPLc.
-- Comparaison des prix dans la zone visible.
-- Mise en avant des stations les moins chères.
-- Fiche détaillée d’une station : adresse, carburants, prix, services, horaires si disponibles et itinéraire.
-- Géolocalisation côté utilisateur, avec autorisation du navigateur.
-- Backend local qui récupère et prépare les données publiques officielles.
+- Carte interactive (fond Plan IGN) avec un marqueur de prix par station, coloré selon le tiers de prix de la zone affichée (vert / orange / rouge) et une étoile sur la station la moins chère.
+- Choix du carburant : Gazole, SP95-E10, SP95, SP98, E85 et GPLc, avec le prix minimum de la zone pour chacun.
+- Statistiques de la zone (mini, moyenne, maxi, nombre de stations) et comparaison avec la moyenne nationale.
+- Liste triable par prix ou par distance, avec nom et enseigne des stations, statut d’ouverture et ancienneté du prix.
+- Fiche station : prix façon totem, rang dans la zone, jauge mini/moyenne/maxi, économie estimée sur un plein de 50 L, tous les carburants, ruptures, horaires de la semaine (ouvert/fermé en temps réel, heure de Paris), services, itinéraire Google Maps ou Waze, partage.
+- Recherche par ville, code postal ou adresse, avec navigation au clavier.
+- Liens partageables (`?carburant=e10&lat=…&lng=…&z=…` ou `?station=…`), préférences mémorisées (carburant, langue, dernière zone).
+- Interface en français et en anglais, mise en page dédiée desktop et mobile.
+- Prix non mis à jour depuis plus de 30 jours écartés, prix de plus de 7 jours signalés « à vérifier ».
+- Google Analytics chargé uniquement après consentement (bandeau conforme aux recommandations de la CNIL).
 
 ## Technologies utilisées
 
-- **React** et **Expo Web** pour l’interface.
-- **React Native Web** pour partager une logique d’interface compatible web.
-- **Node.js** pour le backend.
-- **TypeScript** pour le frontend.
-- **JavaScript ES Modules** pour le backend.
-- **Leaflet** et **React-Leaflet** pour la carte.
-- **Expo Location** pour la géolocalisation.
-- **fast-xml-parser** pour lire le flux XML des carburants.
-- **fflate** pour décompresser les données officielles.
+- **React**, **Expo Web** et **React Native Web** pour l’interface.
+- **TypeScript** pour le frontend, **Node.js** (ES Modules, sans framework) pour le backend.
+- **Leaflet** et **React-Leaflet** pour la carte, avec le **Plan IGN** de la Géoplateforme (sans clé d’API).
+- Police **Plus Jakarta Sans**, icônes issues de **Lucide** (intégrées une à une dans `src/components/icons.tsx`).
+- **fast-xml-parser** et **fflate** pour lire le flux officiel (côté serveur uniquement).
 - **Heroku** compatible via `Procfile` et `heroku-postbuild`.
 
 ## Sources de données
@@ -41,25 +39,27 @@ Dans le code, PleinSpot consomme directement le flux instantané officiel utilis
 
 Ce flux fournit une archive contenant les informations des stations et les prix déclarés. Le backend la télécharge, la décompresse, lit le XML, normalise les stations, puis renvoie seulement les résultats utiles à la zone affichée.
 
-La recherche de communes utilise aussi l’API publique suivante :
+Le nom et l’enseigne des stations, absents du flux, sont lus à la demande sur la fiche officielle `https://www.prix-carburants.gouv.fr/station/{id}` (cache 24 h, 3 requêtes simultanées au maximum, pause automatique si le site refuse les requêtes).
 
-- `https://geo.api.gouv.fr/communes`
+La recherche de communes utilise l’API publique `https://geo.api.gouv.fr/communes` et le fond de carte provient du Plan IGN (`https://data.geopf.fr/wmts`).
 
 ## Architecture
 
 ```text
 .
 |-- backend/
-|   |-- server.mjs           # Serveur HTTP, routes API et fichiers statiques
-|   `-- fuelDataService.mjs  # Récupération, cache et filtrage des données carburant
+|   |-- server.mjs                # Serveur HTTP : API, fichiers statiques, compression, en-têtes de sécurité
+|   |-- fuelDataService.mjs       # Flux officiel : téléchargement, cache, rafraîchissement, statistiques
+|   |-- stationDetailsService.mjs # Nom et enseigne des stations (fiche officielle)
+|   `-- citySearchService.mjs     # Recherche de communes et codes postaux
 |-- src/
-|   |-- components/          # Carte, fiche station, résumé et interface
-|   |-- lib/                 # API, formatage, recherche, carburants, affichage
-|   |-- types/               # Types partagés
-|   `-- AppShell.tsx         # Logique principale de l’application
-|-- assets/                  # Logo et ressources graphiques
-|-- public/                  # Fichiers publics web
-|-- scripts/                 # Scripts de build
+|   |-- components/               # Carte, liste, fiche station, recherche, sélecteur de carburant…
+|   |-- lib/                      # API, horaires, prix, enseignes, traductions, URL, préférences
+|   |-- types/                    # Types partagés
+|   |-- theme.ts                  # Couleurs, typographie, rayons, ombres
+|   `-- AppShell.tsx              # État de l’application et mise en page desktop / mobile
+|-- assets/                       # Logo source et favicon
+|-- public/                       # index.html (SEO, consentement), manifeste PWA, icônes, image de partage
 |-- App.tsx
 |-- index.ts
 |-- package.json
@@ -126,8 +126,12 @@ Le serveur Node.js sert :
 Routes principales :
 
 - `GET /api/health`
-- `GET /api/stations`
-- `GET /api/cities?q=paris`
+- `GET /api/stations?latitude=48.85&longitude=2.35&latitudeDelta=0.1&longitudeDelta=0.14&fuel=gazole&limit=200` : stations de la zone triées par prix, statistiques de la zone, moyenne nationale et prix minimum par carburant
+- `GET /api/stations/{id}` : une station et ses détails (nom, enseigne)
+- `GET /api/stations/details?ids=1,2,3` : noms et enseignes de plusieurs stations (20 au maximum)
+- `GET /api/cities?q=lyon` ou `?q=69003`
+
+Le flux officiel est chargé au démarrage puis rafraîchi toutes les 10 minutes en arrière-plan : les requêtes n’attendent jamais le téléchargement, sauf au tout premier démarrage.
 
 ## Variables d’environnement
 
@@ -177,5 +181,4 @@ et de s’assurer qu’aucun fichier personnel, rapport, capture privée ou fich
 
 - Les prix dépendent de la fraîcheur des données déclarées par les stations.
 - Certaines stations peuvent ne pas renseigner tous les carburants, horaires ou services.
-- Le prototype doit encore être testé plus largement sur mobile.
-- Une page d’information utilisateur pourrait être ajoutée pour expliquer la source des données et leurs limites.
+- Le site est une application monopage : les moteurs de recherche n’indexent que la page d’accueil (pas de pages par ville).

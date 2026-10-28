@@ -1,198 +1,224 @@
-import { createReadStream, existsSync } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { readFile, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
-import { extname, normalize, resolve } from 'node:path';
+import { extname, resolve, sep } from 'node:path';
+import { brotliCompressSync, constants as zlibConstants, gzipSync } from 'node:zlib';
 
-import { fetchStationsInRegion } from './fuelDataService.mjs';
+import { searchCities } from './citySearchService.mjs';
+import { FUEL_KEYS, fetchStationsInRegion, getDataStatus, getStationById, startFuelDataRefresh } from './fuelDataService.mjs';
+import { getStationDetails, getStationDetailsBatch } from './stationDetailsService.mjs';
 
 const PORT = Number(process.env.PORT || 4000);
 const DIST_DIR = resolve(process.cwd(), 'dist');
 const INDEX_FILE = resolve(DIST_DIR, 'index.html');
 const HAS_STATIC_BUILD = existsSync(INDEX_FILE);
-const cityCache = new Map();
+const DEFAULT_LIMIT = 200;
+const MAX_LIMIT = 400;
+const MAX_DETAILS_BATCH = 20;
+const COMPRESSIBLE_TYPES = /^(text\/|application\/(javascript|json|manifest\+json|xml)|image\/svg\+xml)/;
+const compressedFileCache = new Map();
+
+const CONTENT_TYPES = {
+  '.css': 'text/css; charset=utf-8',
+  '.html': 'text/html; charset=utf-8',
+  '.ico': 'image/x-icon',
+  '.jpeg': 'image/jpeg',
+  '.jpg': 'image/jpeg',
+  '.js': 'application/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.map': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.ttf': 'font/ttf',
+  '.txt': 'text/plain; charset=utf-8',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
+  '.webp': 'image/webp',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.xml': 'application/xml; charset=utf-8',
+};
+
+const SECURITY_HEADERS = {
+  'Permissions-Policy': 'geolocation=(self), camera=(), microphone=()',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+};
+
+const indexTemplate = HAS_STATIC_BUILD ? await readFile(INDEX_FILE, 'utf8') : null;
+const contentSecurityPolicy = indexTemplate ? buildContentSecurityPolicy(indexTemplate) : null;
 
 const server = createServer(async (request, response) => {
-  const url = new URL(request.url || '/', `http://${request.headers.host || `localhost:${PORT}`}`);
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+    response.setHeader(name, value);
+  }
 
-  if (url.pathname.startsWith('/api/')) {
-    setCorsHeaders(response);
+  let url;
 
-    if (request.method === 'OPTIONS') {
-      response.writeHead(204);
+  try {
+    url = new URL(request.url || '/', 'http://localhost');
+  } catch {
+    sendText(response, 400, 'Bad request.');
+    return;
+  }
+
+  try {
+    if (url.pathname.startsWith('/api/')) {
+      await handleApiRequest(request, response, url);
+      return;
+    }
+
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      response.setHeader('Allow', 'GET, HEAD');
+      sendText(response, 405, 'Method not allowed.');
+      return;
+    }
+
+    const wasServed = await serveStaticAsset(request, response, url.pathname);
+
+    if (!wasServed) {
+      sendText(response, 404, 'Not found.');
+    }
+  } catch (error) {
+    console.error('[server] unexpected error:', error);
+
+    if (!response.headersSent) {
+      sendJson(request, response, 500, { error: 'Unexpected server error.' });
+    } else {
       response.end();
-      return;
     }
+  }
+});
 
-    if (request.method === 'GET' && url.pathname === '/api/health') {
-      sendJson(response, 200, {
-        ok: true,
-        service: 'pleinspot-backend',
-      });
-      return;
-    }
+async function handleApiRequest(request, response, url) {
+  response.setHeader('Access-Control-Allow-Origin', '*');
+  response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    if (request.method === 'GET' && url.pathname === '/api/stations') {
-      try {
-        const latitude = Number(url.searchParams.get('latitude'));
-        const longitude = Number(url.searchParams.get('longitude'));
-        const latitudeDelta = Number(url.searchParams.get('latitudeDelta'));
-        const longitudeDelta = Number(url.searchParams.get('longitudeDelta'));
-        const fuelFilter = parseFuelFilter(url.searchParams.get('fuelFilter'));
-        const limit = Number(url.searchParams.get('limit') || 220);
-        const forceRefresh = url.searchParams.get('forceRefresh') === '1';
-
-        if (![latitude, longitude, latitudeDelta, longitudeDelta].every(Number.isFinite)) {
-          sendJson(response, 400, {
-            error: 'Missing or invalid region query parameters.',
-          });
-          return;
-        }
-
-        const result = await fetchStationsInRegion({
-          forceRefresh,
-          fuelFilter,
-          limit,
-          region: {
-            latitude,
-            latitudeDelta,
-            longitude,
-            longitudeDelta,
-          },
-        });
-
-        sendJson(response, 200, result);
-      } catch (error) {
-        sendJson(response, 500, {
-          error: error instanceof Error ? error.message : 'Unexpected backend error.',
-        });
-      }
-      return;
-    }
-
-    if (request.method === 'GET' && url.pathname === '/api/cities') {
-      try {
-        const query = url.searchParams.get('q')?.trim() ?? '';
-
-        if (query.length < 2) {
-          sendJson(response, 200, []);
-          return;
-        }
-
-        const cacheKey = query.toLowerCase();
-
-        if (cityCache.has(cacheKey)) {
-          sendJson(response, 200, cityCache.get(cacheKey));
-          return;
-        }
-
-        const apiUrl = new URL('https://geo.api.gouv.fr/communes');
-        apiUrl.searchParams.set('nom', query);
-        apiUrl.searchParams.set('limit', '5');
-        apiUrl.searchParams.set('boost', 'population');
-        apiUrl.searchParams.set('fields', 'nom,code,codesPostaux,centre,departement,region');
-
-        const cityResponse = await fetch(apiUrl, {
-          headers: {
-            Accept: 'application/json',
-          },
-        });
-
-        if (!cityResponse.ok) {
-          sendJson(response, 200, []);
-          return;
-        }
-
-        const payload = await cityResponse.json();
-        const results = payload
-          .map((entry, index) => mapCityResult(entry, index))
-          .filter(Boolean);
-
-        cityCache.set(cacheKey, results);
-        sendJson(response, 200, results);
-      } catch {
-        sendJson(response, 200, []);
-      }
-      return;
-    }
-
-    sendJson(response, 404, {
-      error: 'Not found.',
-    });
+  if (request.method === 'OPTIONS') {
+    response.writeHead(204);
+    response.end();
     return;
   }
 
   if (request.method !== 'GET' && request.method !== 'HEAD') {
-    response.writeHead(405, {
-      Allow: 'GET, HEAD, OPTIONS',
-      'Content-Type': 'text/plain; charset=utf-8',
-    });
-    response.end('Method not allowed.');
+    sendJson(request, response, 405, { error: 'Method not allowed.' });
     return;
   }
 
-  const wasServed = await serveStaticAsset(url.pathname, response, request.method === 'HEAD');
+  const { pathname, searchParams } = url;
 
-  if (wasServed) {
+  if (pathname === '/api/health') {
+    sendJson(request, response, 200, { ok: true, service: 'pleinspot-backend', ...getDataStatus() }, 'no-store');
     return;
   }
 
-  response.writeHead(404, {
-    'Content-Type': 'text/plain; charset=utf-8',
-  });
-  response.end('Not found.');
-});
+  if (pathname === '/api/stations') {
+    const region = {
+      latitude: Number(searchParams.get('latitude')),
+      latitudeDelta: Number(searchParams.get('latitudeDelta')),
+      longitude: Number(searchParams.get('longitude')),
+      longitudeDelta: Number(searchParams.get('longitudeDelta')),
+    };
 
-server.listen(PORT, () => {
-  console.log(
-    HAS_STATIC_BUILD
-      ? `PleinSpot listening on http://localhost:${PORT} with static web build`
-      : `PleinSpot backend listening on http://localhost:${PORT}`,
-  );
-});
+    if (!isValidRegion(region)) {
+      sendJson(request, response, 400, { error: 'Missing or invalid region query parameters.' });
+      return;
+    }
 
-export { server };
+    const fuel = parseFuel(searchParams.get('fuel'));
 
-function setCorsHeaders(response) {
-  response.setHeader('Access-Control-Allow-Origin', '*');
-  response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (!fuel) {
+      sendJson(request, response, 400, { error: `Unknown fuel. Expected one of: ${FUEL_KEYS.join(', ')}.` });
+      return;
+    }
+
+    try {
+      const result = await fetchStationsInRegion({
+        forceRefresh: searchParams.get('forceRefresh') === '1',
+        fuel,
+        limit: clamp(Number(searchParams.get('limit')) || DEFAULT_LIMIT, 1, MAX_LIMIT),
+        region,
+      });
+
+      sendJson(request, response, 200, result, 'public, max-age=60');
+    } catch (error) {
+      console.error('[api] stations failed:', error.message);
+      sendJson(request, response, 503, { error: 'Les données officielles sont momentanément indisponibles.' });
+    }
+    return;
+  }
+
+  if (pathname === '/api/stations/details') {
+    const ids = parseIds(searchParams.get('ids')).slice(0, MAX_DETAILS_BATCH);
+
+    sendJson(request, response, 200, await getStationDetailsBatch(ids), 'public, max-age=3600');
+    return;
+  }
+
+  const stationMatch = /^\/api\/stations\/(\d{1,12})$/.exec(pathname);
+
+  if (stationMatch) {
+    const stationId = Number(stationMatch[1]);
+    const [result, details] = await Promise.all([getStationById(stationId), getStationDetails(stationId)]);
+
+    if (!result) {
+      sendJson(request, response, 404, { error: 'Station not found.' });
+      return;
+    }
+
+    sendJson(request, response, 200, { ...result, details }, 'public, max-age=60');
+    return;
+  }
+
+  if (pathname === '/api/cities') {
+    try {
+      sendJson(request, response, 200, await searchCities(searchParams.get('q') ?? ''), 'public, max-age=86400');
+    } catch {
+      sendJson(request, response, 200, [], 'no-store');
+    }
+    return;
+  }
+
+  sendJson(request, response, 404, { error: 'Not found.' });
 }
 
-function sendJson(response, statusCode, payload) {
-  response.writeHead(statusCode, {
-    'Content-Type': 'application/json; charset=utf-8',
-  });
-  response.end(JSON.stringify(payload));
-}
-
-async function serveStaticAsset(pathname, response, headOnly) {
+async function serveStaticAsset(request, response, pathname) {
   if (!HAS_STATIC_BUILD) {
     return false;
   }
 
   const filePath = resolveStaticPath(pathname);
 
-  if (filePath && (await isFile(filePath))) {
-    await sendFile(response, filePath, headOnly);
+  if (filePath && filePath !== INDEX_FILE && (await isFile(filePath))) {
+    await sendFile(request, response, filePath);
     return true;
   }
 
-  if (pathname === '/' || !extname(pathname)) {
-    await sendFile(response, INDEX_FILE, headOnly);
+  // Single-page app: every route without a file extension renders the app shell.
+  if (pathname === '/' || pathname === '/index.html' || !extname(pathname)) {
+    sendIndex(request, response);
     return true;
   }
 
   return false;
 }
 
+function sendIndex(request, response) {
+  const origin = getPublicOrigin(request);
+  const html = indexTemplate.replaceAll('__ORIGIN__', origin);
+
+  response.setHeader('Content-Security-Policy', contentSecurityPolicy);
+  sendBody(request, response, 200, Buffer.from(html), CONTENT_TYPES['.html'], 'no-cache');
+}
+
 function resolveStaticPath(pathname) {
   try {
     const decodedPath = decodeURIComponent(pathname);
-    const relativePath = decodedPath === '/' ? '/index.html' : decodedPath;
-    const normalizedPath = normalize(relativePath).replace(/^(\.\.(\/|\\|$))+/, '');
-    const candidatePath = resolve(DIST_DIR, `.${normalizedPath}`);
+    const candidatePath = resolve(DIST_DIR, `.${decodedPath}`);
 
-    if (!candidatePath.startsWith(DIST_DIR)) {
+    if (candidatePath !== DIST_DIR && !candidatePath.startsWith(`${DIST_DIR}${sep}`)) {
       return null;
     }
 
@@ -204,113 +230,177 @@ function resolveStaticPath(pathname) {
 
 async function isFile(filePath) {
   try {
-    const fileStat = await stat(filePath);
-    return fileStat.isFile();
+    return (await stat(filePath)).isFile();
   } catch {
     return false;
   }
 }
 
-async function sendFile(response, filePath, headOnly) {
-  const fileStat = await stat(filePath);
-  const contentType = getContentType(filePath);
+async function sendFile(request, response, filePath) {
+  const contentType = CONTENT_TYPES[extname(filePath).toLowerCase()] ?? 'application/octet-stream';
+  const body = await readFile(filePath);
 
-  response.writeHead(200, {
-    'Cache-Control': getCacheControl(filePath),
-    'Content-Length': fileStat.size,
-    'Content-Type': contentType,
+  sendBody(request, response, 200, body, contentType, getCacheControl(filePath), filePath);
+}
+
+function sendJson(request, response, statusCode, payload, cacheControl = 'no-store') {
+  sendBody(request, response, statusCode, Buffer.from(JSON.stringify(payload)), CONTENT_TYPES['.json'], cacheControl);
+}
+
+function sendText(response, statusCode, message) {
+  response.writeHead(statusCode, {
+    'Content-Type': 'text/plain; charset=utf-8',
   });
+  response.end(message);
+}
 
-  if (headOnly) {
-    response.end();
-    return;
+function sendBody(request, response, statusCode, body, contentType, cacheControl, cacheKey) {
+  const encoding = COMPRESSIBLE_TYPES.test(contentType) && body.length > 1024 ? pickEncoding(request) : null;
+  const payload = encoding ? compress(body, encoding, cacheKey) : body;
+  const headers = {
+    'Cache-Control': cacheControl,
+    'Content-Length': payload.length,
+    'Content-Type': contentType,
+    Vary: 'Accept-Encoding',
+  };
+
+  if (encoding) {
+    headers['Content-Encoding'] = encoding;
   }
 
-  await new Promise((resolvePromise, rejectPromise) => {
-    const stream = createReadStream(filePath);
-    stream.on('error', rejectPromise);
-    stream.on('end', resolvePromise);
-    stream.pipe(response);
-  });
+  response.writeHead(statusCode, headers);
+  response.end(request.method === 'HEAD' ? undefined : payload);
+}
+
+function pickEncoding(request) {
+  const accepted = String(request.headers['accept-encoding'] ?? '');
+
+  if (/\bbr\b/.test(accepted)) {
+    return 'br';
+  }
+
+  if (/\bgzip\b/.test(accepted)) {
+    return 'gzip';
+  }
+
+  return null;
+}
+
+function compress(body, encoding, cacheKey) {
+  const key = cacheKey ? `${encoding}:${cacheKey}` : null;
+
+  if (key && compressedFileCache.has(key)) {
+    return compressedFileCache.get(key);
+  }
+
+  const compressed =
+    encoding === 'br'
+      ? brotliCompressSync(body, {
+          params: {
+            [zlibConstants.BROTLI_PARAM_QUALITY]: key ? 9 : 5,
+            [zlibConstants.BROTLI_PARAM_SIZE_HINT]: body.length,
+          },
+        })
+      : gzipSync(body, { level: key ? 9 : 6 });
+
+  if (key) {
+    compressedFileCache.set(key, compressed);
+  }
+
+  return compressed;
 }
 
 function getCacheControl(filePath) {
-  return filePath === INDEX_FILE ? 'no-cache' : 'public, max-age=31536000, immutable';
+  const relativePath = filePath.slice(DIST_DIR.length).replaceAll('\\', '/');
+
+  // Expo fingerprints everything under /_expo and /assets: those can be cached forever.
+  if (relativePath.startsWith('/_expo/') || relativePath.startsWith('/assets/')) {
+    return 'public, max-age=31536000, immutable';
+  }
+
+  return 'public, max-age=3600';
 }
 
-function getContentType(filePath) {
-  switch (extname(filePath).toLowerCase()) {
-    case '.css':
-      return 'text/css; charset=utf-8';
-    case '.html':
-      return 'text/html; charset=utf-8';
-    case '.ico':
-      return 'image/x-icon';
-    case '.jpeg':
-    case '.jpg':
-      return 'image/jpeg';
-    case '.js':
-      return 'application/javascript; charset=utf-8';
-    case '.json':
-      return 'application/json; charset=utf-8';
-    case '.map':
-      return 'application/json; charset=utf-8';
-    case '.png':
-      return 'image/png';
-    case '.svg':
-      return 'image/svg+xml';
-    case '.txt':
-      return 'text/plain; charset=utf-8';
-    case '.webp':
-      return 'image/webp';
-    case '.woff':
-      return 'font/woff';
-    case '.woff2':
-      return 'font/woff2';
-    default:
-      return 'application/octet-stream';
+function getPublicOrigin(request) {
+  const forwardedProto = String(request.headers['x-forwarded-proto'] ?? '').split(',')[0].trim();
+  const protocol = forwardedProto || (request.socket.encrypted ? 'https' : 'http');
+  const host = String(request.headers['x-forwarded-host'] ?? request.headers.host ?? `localhost:${PORT}`)
+    .split(',')[0]
+    .trim();
+
+  return /^[a-z0-9.\-:[\]]+$/i.test(host) ? `${protocol}://${host}` : '';
+}
+
+function buildContentSecurityPolicy(html) {
+  const inlineScriptHashes = [...html.matchAll(/<script(?![^>]*\bsrc=)(?![^>]*type="application\/ld\+json")[^>]*>([\s\S]*?)<\/script>/gi)]
+    .map((match) => `'sha256-${createHash('sha256').update(match[1]).digest('base64')}'`)
+    .join(' ');
+  const apiOrigin = getOrigin(process.env.EXPO_PUBLIC_API_BASE_URL);
+  const analytics = 'https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com';
+
+  return [
+    "default-src 'self'",
+    `script-src 'self' ${inlineScriptHashes} https://www.googletagmanager.com`,
+    "style-src 'self' 'unsafe-inline'",
+    `img-src 'self' data: blob: https://data.geopf.fr ${analytics}`,
+    "font-src 'self' data:",
+    `connect-src 'self' ${apiOrigin} ${analytics}`.replace(/\s+/g, ' '),
+    "manifest-src 'self'",
+    "frame-ancestors 'self'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+  ].join('; ');
+}
+
+function getOrigin(value) {
+  try {
+    return value ? new URL(value).origin : '';
+  } catch {
+    return '';
   }
 }
 
-function mapCityResult(entry, index) {
-  const coordinates = entry.centre?.coordinates;
-  const longitude = Array.isArray(coordinates) ? Number(coordinates[0]) : NaN;
-  const latitude = Array.isArray(coordinates) ? Number(coordinates[1]) : NaN;
-
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-    return null;
-  }
-
-  const label = entry.nom?.trim();
-  const postcode = Array.isArray(entry.codesPostaux) ? entry.codesPostaux[0] : '';
-  const department = entry.departement?.nom?.trim();
-  const region = entry.region?.nom?.trim();
-  const subtitle = [postcode, department, region].filter(Boolean).join(', ');
-
-  if (!label) {
-    return null;
-  }
-
-  return {
-    id: `${label}-${latitude}-${longitude}-${index}`,
-    label,
-    region: {
-      latitude,
-      latitudeDelta: 0.18,
-      longitude,
-      longitudeDelta: 0.18,
-    },
-    subtitle,
-  };
+function isValidRegion(region) {
+  return (
+    Object.values(region).every(Number.isFinite) &&
+    Math.abs(region.latitude) <= 90 &&
+    Math.abs(region.longitude) <= 180 &&
+    region.latitudeDelta > 0 &&
+    region.longitudeDelta > 0 &&
+    region.latitudeDelta <= 60 &&
+    region.longitudeDelta <= 120
+  );
 }
 
-function parseFuelFilter(value) {
-  if (!value || value === 'all') {
-    return [];
-  }
+function parseFuel(value) {
+  const key = String(value ?? '').trim();
 
-  return value
-    .split(',')
-    .map((fuelKey) => fuelKey.trim())
-    .filter(Boolean);
+  return FUEL_KEYS.includes(key) ? key : null;
 }
+
+function parseIds(value) {
+  return [
+    ...new Set(
+      String(value ?? '')
+        .split(',')
+        .map((id) => Number(id.trim()))
+        .filter((id) => Number.isInteger(id) && id > 0),
+    ),
+  ];
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+server.listen(PORT, () => {
+  console.log(
+    HAS_STATIC_BUILD
+      ? `PleinSpot listening on http://localhost:${PORT} with static web build`
+      : `PleinSpot backend listening on http://localhost:${PORT}`,
+  );
+  startFuelDataRefresh();
+});
+
+export { server };

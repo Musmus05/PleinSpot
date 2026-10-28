@@ -2,94 +2,168 @@ import { unzipSync } from 'fflate';
 import { XMLParser } from 'fast-xml-parser';
 
 const API_URL = 'https://donnees.roulez-eco.fr/opendata/instantane';
-const CACHE_TTL_MS = 5 * 60 * 1000;
-const REGION_CACHE_TTL_MS = 20 * 1000;
+const REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+const MIN_FORCED_REFRESH_GAP_MS = 60 * 1000;
+const UPSTREAM_TIMEOUT_MS = 45 * 1000;
 const LAT_LON_SCALE = 100000;
-const FUEL_OPTIONS = ['gazole', 'sp95', 'e10', 'sp98', 'e85', 'gplc'];
+const DAY_MS = 24 * 60 * 60 * 1000;
+// Prices older than this are almost always stations that stopped declaring: showing them
+// would push misleading "cheap" prices to the top of the comparison.
+const MAX_PRICE_AGE_MS = 30 * DAY_MS;
+const MIN_VALID_PRICE = 0.3;
+const MAX_VALID_PRICE = 5;
+const MIN_REGION_DELTA = 0.01;
 
-let cachedStations = null;
-let cacheFetchedAt = null;
+export const FUEL_KEYS = ['gazole', 'e10', 'sp95', 'sp98', 'e85', 'gplc'];
+
+const FUEL_NAME_TO_KEY = {
+  E10: 'e10',
+  E85: 'e85',
+  GPLc: 'gplc',
+  Gazole: 'gazole',
+  SP95: 'sp95',
+  SP98: 'sp98',
+};
+
+const LOWERCASE_PARTICLES = new Set(['au', 'aux', 'de', 'des', 'du', 'en', 'et', 'la', 'le', 'les', 'sous', 'sur']);
+const UPPERCASE_WORDS = new Set(['bp', 'cc', 'cd', 'chu', 'rd', 'rn', 'za', 'zac', 'zae', 'zi']);
+
+let snapshot = null;
 let inflightLoad = null;
-const regionResponseCache = new Map();
+let lastLoadStartedAt = 0;
+let refreshTimer = null;
 
 const parser = new XMLParser({
   allowBooleanAttributes: true,
   attributeNamePrefix: '',
   ignoreAttributes: false,
+  parseAttributeValue: false,
+  parseTagValue: false,
 });
 
-export async function fetchStationsInRegion({
-  forceRefresh = false,
-  fuelFilter,
-  limit = 220,
-  region,
-}) {
-  if (forceRefresh) {
-    regionResponseCache.clear();
+export function startFuelDataRefresh() {
+  if (refreshTimer) {
+    return;
   }
 
-  const { fetchedAt, stations } = await getCachedStations(forceRefresh);
-  const regionCacheKey = getRegionCacheKey({
-    fetchedAt,
-    fuelFilter,
-    limit,
-    region,
+  loadSnapshot().catch((error) => {
+    console.error('[fuel] initial load failed:', error.message);
   });
 
-  if (!forceRefresh) {
-    const cachedRegionResponse = regionResponseCache.get(regionCacheKey);
+  refreshTimer = setInterval(() => {
+    loadSnapshot().catch((error) => {
+      console.error('[fuel] background refresh failed:', error.message);
+    });
+  }, REFRESH_INTERVAL_MS);
+  refreshTimer.unref?.();
+}
 
-    if (cachedRegionResponse && cachedRegionResponse.expiresAt > Date.now()) {
-      return cachedRegionResponse.value;
+export function getDataStatus() {
+  return {
+    fetchedAt: snapshot?.fetchedAt ?? null,
+    stationCount: snapshot?.stations.length ?? 0,
+  };
+}
+
+export async function fetchStationsInRegion({ forceRefresh = false, fuel, limit, region }) {
+  const { fetchedAt, national, stations } = await getSnapshot({ forceRefresh });
+  const bounds = getRegionBounds(region);
+  const inBounds = [];
+  const overviewValues = Object.fromEntries(FUEL_KEYS.map((key) => [key, []]));
+
+  for (const station of stations) {
+    if (!isInBounds(station.coordinates, bounds)) {
+      continue;
+    }
+
+    inBounds.push(station);
+
+    for (const key of FUEL_KEYS) {
+      const price = station.prices[key];
+
+      if (price) {
+        overviewValues[key].push(price.value);
+      }
     }
   }
 
-  const visibleStations = stations.filter((station) => isStationVisible(station, region));
-  const filteredByFuel =
-    fuelFilter.length === 0
-      ? visibleStations
-      : visibleStations.filter((station) => fuelFilter.some((fuelKey) => station.prices[fuelKey] != null));
+  const matching = inBounds
+    .filter((station) => station.prices[fuel] != null)
+    .sort((left, right) => compareByPrice(left, right, fuel));
+  const stats = computeStats(overviewValues[fuel]);
+  const overview = Object.fromEntries(
+    FUEL_KEYS.map((key) => {
+      const values = overviewValues[key];
 
-  const response = {
+      if (values.length === 0) {
+        return [key, null];
+      }
+
+      return [key, { count: values.length, min: Math.min(...values) }];
+    }),
+  );
+
+  return {
     fetchedAt,
-    stations: sortStationsByFuel(filteredByFuel, fuelFilter).slice(0, limit),
+    fuel,
+    national: national[fuel] ?? null,
+    overview,
+    stations: matching.slice(0, limit),
+    stats,
+    total: matching.length,
   };
+}
 
-  if (!forceRefresh) {
-    regionResponseCache.set(regionCacheKey, {
-      expiresAt: Date.now() + REGION_CACHE_TTL_MS,
-      value: response,
+export async function getStationById(id) {
+  const { byId, fetchedAt } = await getSnapshot();
+  const station = byId.get(id) ?? null;
+
+  return station ? { fetchedAt, station } : null;
+}
+
+async function getSnapshot({ forceRefresh = false } = {}) {
+  if (!snapshot) {
+    return loadSnapshot();
+  }
+
+  const age = Date.now() - snapshot.loadedAt;
+  const canForce = Date.now() - lastLoadStartedAt > MIN_FORCED_REFRESH_GAP_MS;
+
+  if (forceRefresh && canForce) {
+    return loadSnapshot().catch(() => snapshot);
+  }
+
+  if (age > REFRESH_INTERVAL_MS) {
+    // Serve the current data right away and refresh in the background.
+    loadSnapshot().catch((error) => {
+      console.error('[fuel] stale refresh failed:', error.message);
     });
   }
 
-  pruneExpiredRegionCache();
-
-  return response;
+  return snapshot;
 }
 
-async function getCachedStations(forceRefresh = false) {
-  if (!forceRefresh && cachedStations && cacheFetchedAt && Date.now() - Date.parse(cacheFetchedAt) < CACHE_TTL_MS) {
-    return {
-      fetchedAt: cacheFetchedAt,
-      stations: cachedStations,
-    };
-  }
-
+function loadSnapshot() {
   if (!inflightLoad) {
-    inflightLoad = loadStationsFromZip().finally(() => {
-      inflightLoad = null;
-    });
+    lastLoadStartedAt = Date.now();
+    inflightLoad = downloadSnapshot()
+      .then((nextSnapshot) => {
+        snapshot = nextSnapshot;
+        console.log(`[fuel] ${nextSnapshot.stations.length} stations loaded`);
+        return nextSnapshot;
+      })
+      .finally(() => {
+        inflightLoad = null;
+      });
   }
 
-  const result = await inflightLoad;
-  cachedStations = result.stations;
-  cacheFetchedAt = result.fetchedAt;
-  return result;
+  return inflightLoad;
 }
 
-async function loadStationsFromZip() {
+async function downloadSnapshot() {
   const response = await fetch(API_URL, {
     cache: 'no-store',
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -104,197 +178,288 @@ async function loadStationsFromZip() {
     throw new Error('Official fuel archive is empty.');
   }
 
-  const xml = decodeLatin1(files[firstFileName]);
+  const xml = new TextDecoder('latin1').decode(files[firstFileName]);
   const parsed = parser.parse(xml);
-  const rawStations = ensureArray(parsed?.pdv_liste?.pdv);
+  const now = Date.now();
+  const stations = [];
+
+  for (const raw of ensureArray(parsed?.pdv_liste?.pdv)) {
+    const station = mapStation(raw, now);
+
+    if (station) {
+      stations.push(station);
+    }
+  }
+
+  const national = Object.fromEntries(
+    FUEL_KEYS.map((key) => [
+      key,
+      computeStats(stations.map((station) => station.prices[key]?.value).filter((value) => value != null)),
+    ]),
+  );
 
   return {
-    fetchedAt: new Date().toISOString(),
-    stations: rawStations.map(mapStation).filter(Boolean),
+    byId: new Map(stations.map((station) => [station.id, station])),
+    fetchedAt: new Date(now).toISOString(),
+    loadedAt: now,
+    national,
+    stations,
   };
 }
 
-function mapStation(raw) {
+function mapStation(raw, now) {
   const latitude = Number(raw.latitude) / LAT_LON_SCALE;
   const longitude = Number(raw.longitude) / LAT_LON_SCALE;
+  const id = Number(raw.id);
 
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(id)) {
     return null;
   }
 
-  const rawPrices = ensureArray(raw.prix);
-  const rawRuptures = ensureArray(raw.rupture);
+  if (latitude === 0 && longitude === 0) {
+    return null;
+  }
+
   const prices = {};
 
-  for (const price of rawPrices) {
-    const fuelKey = mapFuelNameToKey(price.nom);
+  for (const price of ensureArray(raw.prix)) {
+    const fuelKey = FUEL_NAME_TO_KEY[price.nom];
 
     if (!fuelKey) {
       continue;
     }
 
-    const value = Number(price.valeur);
+    let value = Number(price.valeur);
 
-    if (!Number.isFinite(value)) {
+    // Older versions of the feed expressed prices in thousandths of a euro.
+    if (value > 100) {
+      value /= 1000;
+    }
+
+    if (!Number.isFinite(value) || value < MIN_VALID_PRICE || value > MAX_VALID_PRICE) {
+      continue;
+    }
+
+    const updatedAt = parisLocalToIso(price.maj);
+
+    if (updatedAt && now - Date.parse(updatedAt) > MAX_PRICE_AGE_MS) {
       continue;
     }
 
     prices[fuelKey] = {
-      updatedAt: normalizeTimestamp(price.maj),
-      value,
+      updatedAt,
+      value: Math.round(value * 1000) / 1000,
     };
   }
 
+  const postcode = String(raw.cp ?? '').trim();
+
   return {
-    address: normalizeText(raw.adresse) || 'Adresse non renseignee',
+    address: toDisplayCase(normalizeText(raw.adresse)) || 'Adresse non renseignée',
     automate24h: raw.horaires?.['automate-24-24'] === '1',
-    availableFuelLabels: Object.keys(prices),
-    city: normalizeCity(raw.ville),
+    city: toDisplayCase(normalizeText(raw.ville)) || 'Ville inconnue',
     coordinates: {
       latitude,
       longitude,
     },
-    department: getDepartmentLabel(raw.cp),
-    id: Number(raw.id),
-    postcode: raw.cp || '--',
+    department: getDepartmentCode(postcode),
+    highway: raw.pop === 'A',
+    id,
+    postcode: postcode || '—',
     prices,
-    region: 'France',
-    schedule: formatSchedule(raw.horaires?.jour),
-    services: ensureArray(raw.services?.service).map((service) => normalizeText(service)).filter(Boolean),
-    unavailableFuelLabels: rawRuptures.map((rupture) => normalizeText(rupture.nom)).filter(Boolean),
+    ruptures: ensureArray(raw.rupture)
+      .map((rupture) => ({
+        fuel: FUEL_NAME_TO_KEY[rupture.nom] ?? null,
+        label: normalizeText(rupture.nom),
+        since: parisLocalToIso(rupture.debut),
+        type: rupture.type === 'definitive' ? 'definitive' : rupture.type === 'temporaire' ? 'temporaire' : null,
+      }))
+      .filter((rupture) => rupture.label),
+    schedule: parseSchedule(raw.horaires?.jour),
+    services: ensureArray(raw.services?.service).map(normalizeText).filter(Boolean),
   };
 }
 
-function isStationVisible(station, region) {
-  const latitudeDelta = Math.max(region.latitudeDelta, 0.03);
-  const longitudeDelta = Math.max(region.longitudeDelta, 0.03);
-  const south = region.latitude - latitudeDelta / 2;
-  const north = region.latitude + latitudeDelta / 2;
-  const west = region.longitude - longitudeDelta / 2;
-  const east = region.longitude + longitudeDelta / 2;
-
-  return (
-    station.coordinates.latitude >= south &&
-    station.coordinates.latitude <= north &&
-    station.coordinates.longitude >= west &&
-    station.coordinates.longitude <= east
-  );
-}
-
-function sortStationsByFuel(stations, fuelFilter) {
-  return [...stations].sort((left, right) => {
-    const leftPrice = getComparablePrice(left, fuelFilter);
-    const rightPrice = getComparablePrice(right, fuelFilter);
-
-    if (leftPrice == null && rightPrice == null) {
-      return 0;
-    }
-
-    if (leftPrice == null) {
-      return 1;
-    }
-
-    if (rightPrice == null) {
-      return -1;
-    }
-
-    return leftPrice - rightPrice;
-  });
-}
-
-function getComparablePrice(station, fuelFilter) {
-  let cheapest = null;
-
-  for (const fuelKey of FUEL_OPTIONS) {
-    if (fuelFilter.length > 0 && !fuelFilter.includes(fuelKey)) {
-      continue;
-    }
-
-    const value = station.prices[fuelKey]?.value;
-
-    if (value == null) {
-      continue;
-    }
-
-    if (cheapest == null || value < cheapest) {
-      cheapest = value;
-    }
-  }
-
-  return cheapest;
-}
-
-function mapFuelNameToKey(name) {
-  switch (name) {
-    case 'Gazole':
-      return 'gazole';
-    case 'SP95':
-      return 'sp95';
-    case 'E10':
-      return 'e10';
-    case 'SP98':
-      return 'sp98';
-    case 'E85':
-      return 'e85';
-    case 'GPLc':
-      return 'gplc';
-    default:
-      return null;
-  }
-}
-
-function formatSchedule(value) {
-  const days = ensureArray(value);
-
-  if (days.length === 0) {
-    return '';
-  }
-
-  return days
+function parseSchedule(value) {
+  return ensureArray(value)
     .map((day) => {
-      if (day.ferme === '1') {
-        return `${normalizeText(day.nom)} ferme`;
-      }
+      const closed = day.ferme === '1';
 
-      const ranges = ensureArray(day.horaire)
-        .map((slot) => `${slot.ouverture.replace('.', ':')}-${slot.fermeture.replace('.', ':')}`)
-        .join(' et ');
-
-      return ranges ? `${normalizeText(day.nom)} ${ranges}` : normalizeText(day.nom);
+      return {
+        closed,
+        day: Number(day.id),
+        slots: closed
+          ? []
+          : ensureArray(day.horaire)
+              .map((slot) => ({
+                close: toClockTime(slot.fermeture),
+                open: toClockTime(slot.ouverture),
+              }))
+              .filter((slot) => slot.open && slot.close),
+      };
     })
-    .join(', ');
+    .filter((day) => day.day >= 1 && day.day <= 7)
+    .sort((left, right) => left.day - right.day);
 }
 
-function normalizeTimestamp(value) {
-  if (!value) {
+function toClockTime(value) {
+  const match = /^(\d{1,2})[.:h](\d{2})$/.exec(String(value ?? '').trim());
+
+  if (!match) {
     return null;
   }
 
-  return value.replace(' ', 'T');
-}
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
 
-function getDepartmentLabel(postcode) {
-  const trimmed = String(postcode || '').trim();
-
-  if (trimmed.length >= 2) {
-    return `Dept. ${trimmed.slice(0, 2)}`;
+  if (hours > 24 || minutes > 59) {
+    return null;
   }
 
-  return 'Dept. --';
+  return `${String(hours).padStart(2, '0')}:${match[2]}`;
 }
 
-function normalizeCity(value) {
-  const text = normalizeText(value);
+function compareByPrice(left, right, fuel) {
+  const difference = left.prices[fuel].value - right.prices[fuel].value;
 
-  if (!text) {
-    return 'Ville inconnue';
+  if (difference !== 0) {
+    return difference;
   }
 
-  return text
-    .toLowerCase()
-    .split(/[\s-]+/)
-    .map((part) => (part ? `${part[0].toUpperCase()}${part.slice(1)}` : part))
-    .join(' ');
+  // Same price: favour the most recently confirmed one.
+  return (Date.parse(right.prices[fuel].updatedAt ?? 0) || 0) - (Date.parse(left.prices[fuel].updatedAt ?? 0) || 0);
+}
+
+function computeStats(values) {
+  if (values.length === 0) {
+    return null;
+  }
+
+  const sorted = [...values].sort((left, right) => left - right);
+  const total = sorted.reduce((sum, value) => sum + value, 0);
+
+  return {
+    average: round3(total / sorted.length),
+    count: sorted.length,
+    max: sorted[sorted.length - 1],
+    median: round3(quantile(sorted, 0.5)),
+    min: sorted[0],
+    p33: round3(quantile(sorted, 1 / 3)),
+    p66: round3(quantile(sorted, 2 / 3)),
+  };
+}
+
+function quantile(sorted, ratio) {
+  const position = (sorted.length - 1) * ratio;
+  const lower = Math.floor(position);
+  const upper = Math.ceil(position);
+
+  return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower);
+}
+
+function round3(value) {
+  return Math.round(value * 1000) / 1000;
+}
+
+function getRegionBounds(region) {
+  const latitudeDelta = Math.max(region.latitudeDelta, MIN_REGION_DELTA);
+  const longitudeDelta = Math.max(region.longitudeDelta, MIN_REGION_DELTA);
+
+  return {
+    east: region.longitude + longitudeDelta / 2,
+    north: region.latitude + latitudeDelta / 2,
+    south: region.latitude - latitudeDelta / 2,
+    west: region.longitude - longitudeDelta / 2,
+  };
+}
+
+function isInBounds(coordinates, bounds) {
+  return (
+    coordinates.latitude >= bounds.south &&
+    coordinates.latitude <= bounds.north &&
+    coordinates.longitude >= bounds.west &&
+    coordinates.longitude <= bounds.east
+  );
+}
+
+const parisOffsetFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Europe/Paris',
+  timeZoneName: 'longOffset',
+});
+const parisOffsetCache = new Map();
+
+// The feed uses Paris wall-clock times without offset ("2026-10-28 08:27:46").
+function parisLocalToIso(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/.exec(String(value ?? '').trim());
+
+  if (!match) {
+    return null;
+  }
+
+  const [, year, month, day, hours, minutes, seconds] = match;
+  const hourKey = `${year}-${month}-${day}T${hours}`;
+  let offset = parisOffsetCache.get(hourKey);
+
+  if (!offset) {
+    const instant = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes)));
+    const zoneName = parisOffsetFormatter.formatToParts(instant).find((part) => part.type === 'timeZoneName')?.value;
+
+    offset = !zoneName || zoneName === 'GMT' ? '+00:00' : zoneName.replace('GMT', '');
+    parisOffsetCache.set(hourKey, offset);
+  }
+
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offset}`;
+}
+
+function getDepartmentCode(postcode) {
+  if (postcode.length < 2) {
+    return '';
+  }
+
+  if (postcode.startsWith('97') || postcode.startsWith('98')) {
+    return postcode.slice(0, 3);
+  }
+
+  return postcode.slice(0, 2);
+}
+
+// Turns "192 AVENUE LOUIS ROCHE" or "SAINT-SEVER" into "192 Avenue Louis Roche" / "Saint-Sever".
+// Mixed-case values are left untouched: they were typed carefully by the station.
+function toDisplayCase(value) {
+  if (!value || value !== value.toUpperCase()) {
+    return value;
+  }
+
+  let wordIndex = 0;
+
+  return value.toLowerCase().replace(/[\p{L}\p{N}]+/gu, (word, offset, full) => {
+    const isFirst = wordIndex === 0;
+    const previous = full[offset - 1];
+
+    wordIndex += 1;
+
+    if (previous === "'" || previous === '’') {
+      return word.length === 1 ? word : capitalize(word);
+    }
+
+    if (!isFirst && LOWERCASE_PARTICLES.has(word)) {
+      return word;
+    }
+
+    if (UPPERCASE_WORDS.has(word)) {
+      return word.toUpperCase();
+    }
+
+    if (word.length === 1 && /\p{L}/u.test(word) && (full[offset + 1] === "'" || full[offset + 1] === '’')) {
+      return isFirst ? word.toUpperCase() : word;
+    }
+
+    return capitalize(word);
+  });
+}
+
+function capitalize(word) {
+  return `${word[0].toUpperCase()}${word.slice(1)}`;
 }
 
 function normalizeText(value) {
@@ -304,46 +469,9 @@ function normalizeText(value) {
 }
 
 function ensureArray(value) {
-  if (!value) {
+  if (value == null || value === '') {
     return [];
   }
 
   return Array.isArray(value) ? value : [value];
-}
-
-function decodeLatin1(bytes) {
-  let result = '';
-  const chunkSize = 8192;
-
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    result += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
-  }
-
-  return result;
-}
-
-function getRegionCacheKey({ fetchedAt, fuelFilter, limit, region }) {
-  return [
-    fetchedAt,
-    fuelFilter,
-    limit,
-    roundRegionValue(region.latitude, 3),
-    roundRegionValue(region.longitude, 3),
-    roundRegionValue(region.latitudeDelta, 3),
-    roundRegionValue(region.longitudeDelta, 3),
-  ].join(':');
-}
-
-function roundRegionValue(value, precision) {
-  return Number(value).toFixed(precision);
-}
-
-function pruneExpiredRegionCache() {
-  const now = Date.now();
-
-  for (const [key, entry] of regionResponseCache) {
-    if (entry.expiresAt <= now) {
-      regionResponseCache.delete(key);
-    }
-  }
 }
