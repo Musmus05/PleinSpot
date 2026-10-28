@@ -1,6 +1,7 @@
 import Bunzip from 'seek-bzip';
 
-// Station names and brands are not in the official feed. OpenStreetMap carries the official
+// Station names, brands and precise positions are not in the official feed (its coordinates
+// are declared by the stations themselves and are often off by hundreds of metres). OpenStreetMap carries the official
 // station id in `ref:FR:prix-carburants` on ~99.6% of French stations, and the OSM QA tool
 // Osmose publishes that join every night. Data © OpenStreetMap contributors, ODbL.
 const OSMOSE_URL =
@@ -25,7 +26,10 @@ export function startStationMetaRefresh() {
   refreshTimer.unref?.();
 }
 
-/** { brand, name } for an official station id, or nulls when OpenStreetMap does not know it. */
+/**
+ * { brand, name, positions } for an official station id. `positions` lists the OSM objects
+ * carrying that id (usually one): the caller picks the one that fits the official location.
+ */
 export function getStationMeta(stationId) {
   return metaById.get(stationId) ?? EMPTY_META;
 }
@@ -34,7 +38,7 @@ export function getStationMetaStatus() {
   return { stationMetaCount: metaById.size };
 }
 
-const EMPTY_META = Object.freeze({ brand: null, name: null });
+const EMPTY_META = Object.freeze({ brand: null, name: null, positions: [] });
 
 async function refreshStationMeta() {
   try {
@@ -78,6 +82,8 @@ function buildMeta(csv) {
   const column = (name) => header.indexOf(name);
   const columns = {
     brand: column('brand'),
+    latitude: column('lat'),
+    longitude: column('lon'),
     name: column('name'),
     origin: column('osmose'),
     ref: column('ref:FR:prix-carburants'),
@@ -97,8 +103,15 @@ function buildMeta(csv) {
 
     const brand = cleanValue(row[columns.brand], GENERIC_BRANDS);
     const name = cleanValue(row[columns.name], GENERIC_NAMES);
+    const latitude = Number(row[columns.latitude]);
+    const longitude = Number(row[columns.longitude]);
+    // Mappers place the object on the forecourt itself: far more precise than the feed.
+    const position =
+      Number.isFinite(latitude) && Number.isFinite(longitude)
+        ? { latitude: Math.round(latitude * 1e6) / 1e6, longitude: Math.round(longitude * 1e6) / 1e6 }
+        : null;
 
-    if (!brand && !name) {
+    if (!brand && !name && !position) {
       continue;
     }
 
@@ -109,15 +122,20 @@ function buildMeta(csv) {
         continue;
       }
 
-      // Duplicated refs exist (two OSM objects for one station): keep the one with a brand.
+      // Duplicated refs exist (two OSM objects for one station): keep the name of the one with
+      // a brand, and every position so the closest to the official location can be chosen.
       const existing = meta.get(id);
+      const positions = [...(existing?.positions ?? []), ...(position ? [position] : [])];
 
       if (!existing || (!existing.brand && brand)) {
         meta.set(id, {
           brand,
           // A name that only repeats the brand adds nothing.
           name: name && brand && name.toLowerCase() === brand.toLowerCase() ? null : name,
+          positions,
         });
+      } else {
+        existing.positions = positions;
       }
     }
   }

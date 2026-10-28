@@ -42,7 +42,7 @@ C'est la source la plus fraîche disponible : le ministère la reconstruit toute
 
 Ce flux fournit une archive contenant les informations des stations et les prix déclarés. Le backend la télécharge, la décompresse, lit le XML, normalise les stations, puis renvoie seulement les résultats utiles à la zone affichée.
 
-Le nom et l’enseigne des stations, absents du flux, viennent d’OpenStreetMap, qui porte l’identifiant officiel de 99,6 % des stations dans le tag `ref:FR:prix-carburants`. Le serveur télécharge chaque jour l’export de l’outil Osmose (497 Ko compressé) et fait la jointure sur cet identifiant. Données © contributeurs OpenStreetMap, licence ODbL : l’attribution est affichée dans l’application.
+Le nom, l’enseigne et la **position exacte** des stations viennent d’OpenStreetMap. Les coordonnées du flux officiel sont déclarées par les stations et souvent approximatives (plus de 100 m d’écart pour environ 2 800 stations, plus d’1 km pour environ 390) ; les contributeurs OpenStreetMap placent la station sur ses pompes. PleinSpot utilise cette position dès qu’elle est à moins de 3 km de la position officielle, sinon il garde l’officielle. Ces données viennent d’OpenStreetMap, qui porte l’identifiant officiel de 99,6 % des stations dans le tag `ref:FR:prix-carburants`. Le serveur télécharge chaque jour l’export de l’outil Osmose (497 Ko compressé) et fait la jointure sur cet identifiant. Données © contributeurs OpenStreetMap, licence ODbL : l’attribution est affichée dans l’application.
 
 La recherche de communes utilise l’API publique `https://geo.api.gouv.fr/communes` et le fond de carte provient d’OpenFreeMap (`https://tiles.openfreemap.org/styles/positron`, données © OpenMapTiles, © OpenStreetMap).
 

@@ -23,6 +23,8 @@ const MIN_VALID_PRICE = 0.3;
 const MAX_VALID_PRICE = 5;
 const MIN_REGION_DELTA = 0.01;
 const DISTRIBUTION_BINS = 24;
+// Beyond this distance an OSM position may belong to a mis-tagged object: the official one stays.
+const MAX_POSITION_CORRECTION_M = 3000;
 
 export const FUEL_KEYS = ['gazole', 'e10', 'sp95', 'sp98', 'e85', 'gplc'];
 
@@ -93,7 +95,7 @@ export async function fetchStationsInRegion({ forceRefresh = false, fuel, limit,
   const overviewValues = Object.fromEntries(FUEL_KEYS.map((key) => [key, []]));
 
   for (const station of stations) {
-    if (!isInBounds(station.coordinates, bounds)) {
+    if (!isInBounds(getPosition(station), bounds)) {
       continue;
     }
 
@@ -145,7 +147,37 @@ export async function getStationById(id) {
 }
 
 function withMeta(station) {
-  return { ...station, ...getStationMeta(station.id) };
+  const { brand, name } = getStationMeta(station.id);
+
+  return { ...station, brand, coordinates: getPosition(station), name };
+}
+
+/** The OpenStreetMap position when it plausibly is the same station, else the official one. */
+function getPosition(station) {
+  let best = station.coordinates;
+  let bestDistance = MAX_POSITION_CORRECTION_M;
+
+  for (const position of getStationMeta(station.id).positions) {
+    const distance = distanceInMeters(station.coordinates, position);
+
+    if (distance <= bestDistance) {
+      best = position;
+      bestDistance = distance;
+    }
+  }
+
+  return best;
+}
+
+function distanceInMeters(from, to) {
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const latitudeDelta = toRadians(to.latitude - from.latitude);
+  const longitudeDelta = toRadians(to.longitude - from.longitude);
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(toRadians(from.latitude)) * Math.cos(toRadians(to.latitude)) * Math.sin(longitudeDelta / 2) ** 2;
+
+  return 6371000 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 }
 
 async function getSnapshot({ forceRefresh = false } = {}) {
