@@ -41,6 +41,7 @@ Le jaune ne porte jamais de texte blanc. Le rouge est réservé aux prix élevé
 - **Barlow Condensed** (600, 700) : prix, identifiants carburant et marque. Rien d'autre.
 - Échelle fixe : 13 · 14 · 16 · 19 · 23 · 28 · 44. Chiffres tabulaires pour toute donnée.
 - Casse normale partout. Pas d'étiquette au-dessus d'un titre.
+- Rien ne se coupe au mauvais endroit : espace insécable entre un nombre et son unité (« 2,250 € », « 3,8 ct », « 3 mois », « 50 L »), dans les dates abrégées et avant « : ; ! ? » en français (passe appliquée à tous les textes dans `copy.ts`). Aucune dernière ligne réduite à un mot (`text-wrap: pretty`), titres équilibrés (`text-wrap: balance`).
 
 ## Formes, espace, profondeur
 

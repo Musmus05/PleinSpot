@@ -58,6 +58,12 @@
       body {
         overflow: hidden;
         overscroll-behavior: none;
+        /* Inherited by every text: no last line holding a single word. */
+        text-wrap: pretty;
+      }
+
+      [role='heading'] {
+        text-wrap: balance;
       }
 
       #root {

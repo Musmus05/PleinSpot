@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import type { DailyPrices } from '../types/station';
 import type { AppLanguage } from './copy';
-import { getLocale } from './format';
+import { getLocale, keepWordsTogether } from './format';
 
 export type HistoryRange = 30 | 90 | 365;
 
@@ -253,5 +253,5 @@ export function formatDay(date: Date, language: AppLanguage, style: 'short' | 'l
           ? { month: 'short', year: 'numeric' }
           : { day: 'numeric', month: 'short' };
 
-  return new Intl.DateTimeFormat(getLocale(language), { ...options, timeZone: 'UTC' }).format(date);
+  return keepWordsTogether(new Intl.DateTimeFormat(getLocale(language), { ...options, timeZone: 'UTC' }).format(date));
 }

@@ -353,4 +353,38 @@ const en: Copy = {
   },
 };
 
-export const copy: Record<AppLanguage, Copy> = { en, fr };
+const NBSP = ' ';
+
+/**
+ * Keeps what reads as one unit on one line, in every text of the app, including the values a
+ * text receives: a number and the word after it ("3 mois", "50 L", "24 stations"), and French
+ * punctuation with the space before it ("sur la période : 2,250 €").
+ */
+function keepUnitsTogether(text: string) {
+  return text
+    .replace(/(\d) (?=[\p{L}€%])/gu, `$1${NBSP}`)
+    .replace(/ ([:;!?»])/g, `${NBSP}$1`)
+    .replace(/« /g, `«${NBSP}`);
+}
+
+function typeset<T>(value: T): T {
+  if (typeof value === 'string') {
+    return keepUnitsTogether(value) as T;
+  }
+
+  if (typeof value === 'function') {
+    return ((...args: unknown[]) => typeset((value as (...args: unknown[]) => unknown)(...args))) as T;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(typeset) as T;
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, typeset(entry)])) as T;
+  }
+
+  return value;
+}
+
+export const copy: Record<AppLanguage, Copy> = { en: typeset(en), fr: typeset(fr) };

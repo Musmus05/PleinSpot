@@ -10,6 +10,9 @@ const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 
+/** Joins a number to its unit: "2,250 €" never wraps as "2,250" / "€". */
+export const NBSP = ' ';
+
 export function getLocale(language: AppLanguage) {
   return LOCALES[language];
 }
@@ -25,7 +28,7 @@ export function formatPriceValue(value: number, language: AppLanguage) {
 
 /** "2,398 €" */
 export function formatPrice(value: number, language: AppLanguage) {
-  return `${formatPriceValue(value, language)} €`;
+  return `${formatPriceValue(value, language)}${NBSP}€`;
 }
 
 /** Splits 2.398 into "2,39" + "8" so the last digit can be rendered smaller, pump-style. */
@@ -43,7 +46,7 @@ export function formatCents(delta: number, language: AppLanguage) {
   const cents = Math.abs(delta) * 100;
   const digits = cents < 10 ? 1 : 0;
 
-  return `${cents.toFixed(digits).replace('.', decimalSeparator(language))} ct`;
+  return `${cents.toFixed(digits).replace('.', decimalSeparator(language))}${NBSP}ct`;
 }
 
 /** "6,40 €" */
@@ -73,12 +76,12 @@ export function getDistanceInKm(from: LatLng, to: LatLng) {
 
 export function formatDistance(distanceInKm: number, language: AppLanguage) {
   if (distanceInKm < 1) {
-    return `${Math.max(10, Math.round((distanceInKm * 1000) / 10) * 10)} m`;
+    return `${Math.max(10, Math.round((distanceInKm * 1000) / 10) * 10)}${NBSP}m`;
   }
 
   const digits = distanceInKm < 10 ? 1 : 0;
 
-  return `${distanceInKm.toFixed(digits).replace('.', decimalSeparator(language))} km`;
+  return `${distanceInKm.toFixed(digits).replace('.', decimalSeparator(language))}${NBSP}km`;
 }
 
 export function getAgeInMs(timestamp: string | null, now = Date.now()) {
@@ -100,20 +103,26 @@ export function formatRelativeTime(timestamp: string | null, language: AppLangua
   }
 
   const formatter = new Intl.RelativeTimeFormat(getLocale(language), { numeric: 'auto', style: 'short' });
+  const format = (value: number, unit: Intl.RelativeTimeFormatUnit) => keepWordsTogether(formatter.format(value, unit));
 
   if (age < MINUTE_MS) {
     return language === 'fr' ? "à l'instant" : 'just now';
   }
 
   if (age < HOUR_MS) {
-    return formatter.format(-Math.round(age / MINUTE_MS), 'minute');
+    return format(-Math.round(age / MINUTE_MS), 'minute');
   }
 
   if (age < DAY_MS) {
-    return formatter.format(-Math.round(age / HOUR_MS), 'hour');
+    return format(-Math.round(age / HOUR_MS), 'hour');
   }
 
-  return formatter.format(-Math.round(age / DAY_MS), 'day');
+  return format(-Math.round(age / DAY_MS), 'day');
+}
+
+/** "il y a 3 h", "14 oct.": short labels that read as one unit and never wrap. */
+export function keepWordsTogether(value: string) {
+  return value.replace(/ /g, NBSP);
 }
 
 function toRadians(value: number) {

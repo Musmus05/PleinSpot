@@ -13,13 +13,14 @@ const SOURCES = [
     label: 'data.economie.gouv.fr, prix des carburants (flux instantané v2)',
     url: 'https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/',
   },
-  { label: 'Historique : archives annuelles de prix-carburants.gouv.fr', url: 'https://www.prix-carburants.gouv.fr/rubrique/opendata/' },
+  // Non-breaking spaces before the colons, as everywhere in the French copy.
+  { label: 'Historique : archives annuelles de prix-carburants.gouv.fr', url: 'https://www.prix-carburants.gouv.fr/rubrique/opendata/' },
   {
-    label: 'Noms et enseignes : contributeurs OpenStreetMap (ODbL), via Osmose',
+    label: 'Noms et enseignes : contributeurs OpenStreetMap (ODbL), via Osmose',
     url: 'https://www.openstreetmap.org/copyright',
   },
   { label: 'geo.api.gouv.fr, communes', url: 'https://geo.api.gouv.fr/decoupage-administratif/communes' },
-  { label: 'Fond de carte : OpenFreeMap, OpenMapTiles, OpenStreetMap', url: 'https://openfreemap.org' },
+  { label: 'Fond de carte : OpenFreeMap, OpenMapTiles, OpenStreetMap', url: 'https://openfreemap.org' },
 ];
 
 export function AboutModal({ language, onClose, visible }: { language: AppLanguage; onClose: () => void; visible: boolean }) {
