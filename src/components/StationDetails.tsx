@@ -193,7 +193,9 @@ export function StationDetails({
                     {getPriceChange(changes, station.id, option.key) ? (
                       <PriceChangeTag change={getPriceChange(changes, station.id, option.key)!} language={language} />
                     ) : (
-                      <Text style={styles.totemUpdated}>{formatRelativeTime(optionPrice.updatedAt, language, now) ?? ''}</Text>
+                      <Text style={[styles.totemUpdated, isActive && styles.totemUpdatedActive]}>
+                        {formatRelativeTime(optionPrice.updatedAt, language, now) ?? ''}
+                      </Text>
                     )}
                     <PriceSlat
                       language={language}
@@ -514,6 +516,10 @@ const styles = StyleSheet.create({
     color: colors.greyLight,
     fontFamily: fonts.regular,
     fontSize: type.meta,
+  },
+  // Grey reads washed out on the blue tint of the selected row: it takes the row's own hue.
+  totemUpdatedActive: {
+    color: colors.blue,
   },
   warning: {
     alignItems: 'flex-start',

@@ -4,6 +4,8 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { FUEL_META, FuelKey } from '../lib/fuels';
 import { colors, fonts } from '../theme';
 
+const MIN_CODE_SIZE = 11;
+
 type FuelBadgeProps = {
   active?: boolean;
   fuel: FuelKey;
@@ -21,7 +23,8 @@ export function FuelBadge({ active = false, fuel, size = 34 }: FuelBadgeProps) {
   const ink = active ? colors.white : colors.black;
   const strokeWidth = 2.2;
   const half = size / 2;
-  const fontSize = euCode.length > 2 ? size * 0.32 : size * 0.38;
+  // Three-letter codes shrink to fit the shape, but never below 11 px: they are read, not decoration.
+  const fontSize = Math.max(MIN_CODE_SIZE, euCode.length > 2 ? size * 0.32 : size * 0.38);
 
   return (
     <View accessibilityElementsHidden importantForAccessibility="no" style={{ height: size, width: size }}>

@@ -4,6 +4,18 @@ PleinSpot est une application web qui aide à repérer les stations-service auto
 
 Le projet a été réalisé comme prototype fonctionnel dans le cadre d’un projet citoyen : l’objectif est de rendre une information publique plus lisible et plus utile pour les personnes qui surveillent leur budget carburant au quotidien.
 
+## Pourquoi PleinSpot plutôt qu’un autre comparateur
+
+Tous les comparateurs partent des mêmes données publiques. PleinSpot se distingue par ce qu’il en fait :
+
+- **Les prix les plus frais possibles.** Le flux officiel est reconstruit toutes les 10 minutes ; PleinSpot le vérifie chaque minute et envoie chaque nouvelle publication aux écrans ouverts, sans rechargement. Les API qui recopient ce flux ont 15 à 30 minutes de retard.
+- **Le prix d’aujourd’hui, et son histoire.** Pour chaque station et chaque zone, l’évolution jour par jour sur 1 mois, 3 mois ou 1 an, face à la moyenne de la zone et à la moyenne nationale. On voit si une station est moins chère depuis des mois ou seulement depuis ce matin, et de combien.
+- **Les stations au bon endroit.** Les coordonnées officielles sont déclarées par les stations : environ 2 800 sont à plus de 100 m de leurs pompes, 390 à plus d’un kilomètre. PleinSpot les replace grâce à OpenStreetMap ; les distances et l’itinéraire mènent à la station, pas à côté.
+- **Des données nettoyées.** Les prix abandonnés depuis plus de 30 jours sont écartés, ceux de plus de 7 jours signalés « à vérifier », les fautes de saisie (« 1,250 » pour « 2,250 ») retirées de l’historique. Les ruptures de stock déclarées sont affichées : le flux officiel courant n’en contient aucune, PleinSpot lit la variante qui les inclut.
+- **Lisible d’un coup d’œil.** Chaque prix prend la couleur de son tiers dans la zone affichée, et les carburants portent l’identifiant européen imprimé sur le pistolet et la trappe du réservoir.
+- **Sans compte, sans installation, sans publicité.** Rien à télécharger, aucune inscription. La position reste dans le navigateur, et la mesure d’audience ne se charge qu’avec votre accord.
+- **Pour tout le monde.** Bureau et mobile, français et anglais, pensé pour le clavier et les lecteurs d’écran, contrastes vérifiés.
+
 ## Fonctionnalités
 
 - **Prix en direct** : le serveur vérifie le flux officiel chaque minute et pousse chaque nouvelle publication aux applis ouvertes (Server-Sent Events). Les prix qui changent clignotent sur la carte et affichent leur écart (« ↓ 1,2 ct ») sans rechargement.

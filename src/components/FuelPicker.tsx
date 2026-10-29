@@ -26,7 +26,8 @@ export function FuelPicker({ fuel, language, layout, onChange, overview }: FuelP
         accessibilityHint={option.description[language]}
         accessibilityLabel={option.label[language]}
         accessibilityRole="radio"
-        accessibilityState={{ checked: isActive }}
+        // react-native-web reads aria-checked, not accessibilityState.checked.
+        aria-checked={isActive}
         key={option.key}
         onPress={() => onChange(option.key)}
         style={({ hovered }) => [
@@ -40,7 +41,7 @@ export function FuelPicker({ fuel, language, layout, onChange, overview }: FuelP
         <Text numberOfLines={1} style={[styles.label, isActive && styles.labelActive]}>
           {option.label[language]}
         </Text>
-        <Text numberOfLines={1} style={styles.meta}>
+        <Text numberOfLines={1} style={[styles.meta, isActive && styles.metaActive]}>
           {overview == null ? ' ' : summary ? t.from(formatPriceValue(summary.min, language)) : t.none}
         </Text>
       </Pressable>
@@ -109,6 +110,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: type.meta,
     fontVariant: ['tabular-nums'],
+  },
+  // Grey reads washed out on the blue tint (4.3:1): secondary text takes the surface's own hue.
+  metaActive: {
+    color: colors.blue,
   },
   row: {
     flexDirection: 'row',
