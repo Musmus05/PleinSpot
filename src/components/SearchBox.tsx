@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 import { searchCities } from '../lib/api';
 import { getBrandLabel, getStationTitle } from '../lib/brands';
@@ -44,6 +44,9 @@ export function SearchBox({
   const [cities, setCities] = useState<CitySearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [dropdownMaxHeight, setDropdownMaxHeight] = useState(400);
+  const { height: windowHeight } = useWindowDimensions();
+  const containerRef = useRef<View>(null);
   const inputRef = useRef<TextInput>(null);
   const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const trimmedQuery = query.trim();
@@ -107,6 +110,31 @@ export function SearchBox({
   const isOpen = isFocused && (hasQuery || trimmedQuery.length === 0);
 
   useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    // Mobile keyboards resize the visual viewport, which can be smaller than
+    // the layout viewport used by React Native Web.
+    const viewport = typeof window !== 'undefined' ? window.visualViewport : null;
+    const updateDropdownHeight = () => {
+      containerRef.current?.measureInWindow((_x, y, _width, height) => {
+        const viewportBottom = viewport ? viewport.offsetTop + viewport.height : windowHeight;
+        setDropdownMaxHeight(Math.max(0, Math.min(400, viewportBottom - y - height - 6 - 12)));
+      });
+    };
+
+    updateDropdownHeight();
+    viewport?.addEventListener('resize', updateDropdownHeight);
+    viewport?.addEventListener('scroll', updateDropdownHeight);
+
+    return () => {
+      viewport?.removeEventListener('resize', updateDropdownHeight);
+      viewport?.removeEventListener('scroll', updateDropdownHeight);
+    };
+  }, [isOpen, windowHeight]);
+
+  useEffect(() => {
     setActiveIndex(0);
   }, [trimmedQuery]);
 
@@ -151,7 +179,7 @@ export function SearchBox({
   const firstStationIndex = items.findIndex((item) => item.kind === 'station');
 
   return (
-    <View style={styles.container}>
+    <View ref={containerRef} style={styles.container}>
       <View style={[styles.inputShell, isFocused && styles.inputShellFocused]}>
         <Search color={isFocused ? colors.blue : colors.grey} size={18} />
         <TextInput
@@ -198,7 +226,11 @@ export function SearchBox({
 
       {isOpen ? (
         <View style={[styles.dropdown, shadows.floating]}>
-          <ScrollView keyboardShouldPersistTaps="handled" style={styles.dropdownScroll}>
+          <ScrollView
+            contentContainerStyle={styles.dropdownContent}
+            keyboardShouldPersistTaps="handled"
+            style={{ maxHeight: dropdownMaxHeight }}
+          >
             {items.length === 0 && !isSearching ? <Text style={styles.empty}>{t.noResults}</Text> : null}
             {items.map((item, index) => {
               const isActive = index === activeIndex;
@@ -317,8 +349,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 52,
   },
-  dropdownScroll: {
-    maxHeight: 400,
+  dropdownContent: {
     paddingVertical: 6,
   },
   empty: {
@@ -356,6 +387,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
+    minHeight: 44,
     paddingHorizontal: 14,
     paddingVertical: 9,
   },

@@ -1186,6 +1186,8 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingBottom: 10,
     paddingHorizontal: 12,
+    // Keep the search dropdown above the following fuel scroll view.
+    zIndex: 1,
   },
   mobileFloating: {
     alignItems: 'flex-end',

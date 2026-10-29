@@ -382,7 +382,8 @@ function getPublicOrigin(request) {
 
 function buildContentSecurityPolicy(html) {
   const inlineScriptHashes = [...html.matchAll(/<script(?![^>]*\bsrc=)(?![^>]*type="application\/ld\+json")[^>]*>([\s\S]*?)<\/script>/gi)]
-    .map((match) => `'sha256-${createHash('sha256').update(match[1]).digest('base64')}'`)
+    // HTML parsers normalize CRLF and CR before checking inline script hashes.
+    .map((match) => `'sha256-${createHash('sha256').update(match[1].replace(/\r\n?/g, '\n')).digest('base64')}'`)
     .join(' ');
   const apiOrigin = getOrigin(process.env.EXPO_PUBLIC_API_BASE_URL);
   const analytics = 'https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com';
