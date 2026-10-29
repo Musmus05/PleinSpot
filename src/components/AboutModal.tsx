@@ -13,6 +13,7 @@ const SOURCES = [
     label: 'data.economie.gouv.fr, prix des carburants (flux instantané v2)',
     url: 'https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/',
   },
+  { label: 'Historique : archives annuelles de prix-carburants.gouv.fr', url: 'https://www.prix-carburants.gouv.fr/rubrique/opendata/' },
   {
     label: 'Noms et enseignes : contributeurs OpenStreetMap (ODbL), via Osmose',
     url: 'https://www.openstreetmap.org/copyright',

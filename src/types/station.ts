@@ -72,6 +72,25 @@ export type StationsResponse = {
   total: number;
 };
 
+/** One price per day in euros, oldest first; null when no price was in force that day. */
+export type DailyPrices = Array<number | null>;
+
+export type StationHistory = {
+  /** Day of the first value, "2025-10-29". The last value is today. */
+  from: string;
+  fuels: Partial<Record<FuelKey, DailyPrices>>;
+};
+
+export type ZoneHistory = {
+  /** Stations with a price, per day. */
+  count: number[];
+  from: string;
+  fuel: FuelKey;
+  mean: DailyPrices;
+  min: DailyPrices;
+  national: DailyPrices;
+};
+
 export type PriceUpdate = {
   changedPrices: number;
   fetchedAt: string;

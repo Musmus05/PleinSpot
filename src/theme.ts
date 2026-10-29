@@ -5,6 +5,8 @@ export const colors = {
   black: '#16181B',
   blue: '#0A4A8F',
   blueDeep: '#073A72',
+  // Second series of a chart, next to `blue` (the area's lowest price beside its average).
+  blueLight: '#5C8FD6',
   blueTint: '#E7EEF7',
   green: '#008351',
   grey: '#4E5452',

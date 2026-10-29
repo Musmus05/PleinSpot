@@ -1,6 +1,8 @@
 import { unzipSync } from 'fflate';
 import { XMLParser } from 'fast-xml-parser';
 
+import { FUEL_KEYS, FUEL_NAME_TO_KEY, parsePriceValue } from './fuels.mjs';
+import { getZoneHistory, recordSnapshot } from './priceHistoryService.mjs';
 import { getStationMeta } from './stationMetaService.mjs';
 
 // Same feed as `instantane`, plus the <rupture> elements (the plain feed ships none).
@@ -19,23 +21,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_PRICE_AGE_MS = 30 * DAY_MS;
 // "Temporary" shortages declared months ago are, in practice, fuels the station no longer sells.
 const MAX_RUPTURE_AGE_MS = 30 * DAY_MS;
-const MIN_VALID_PRICE = 0.3;
-const MAX_VALID_PRICE = 5;
 const MIN_REGION_DELTA = 0.01;
 const DISTRIBUTION_BINS = 24;
 // Beyond this distance an OSM position may belong to a mis-tagged object: the official one stays.
 const MAX_POSITION_CORRECTION_M = 3000;
-
-export const FUEL_KEYS = ['gazole', 'e10', 'sp95', 'sp98', 'e85', 'gplc'];
-
-const FUEL_NAME_TO_KEY = {
-  E10: 'e10',
-  E85: 'e85',
-  GPLc: 'gplc',
-  Gazole: 'gazole',
-  SP95: 'sp95',
-  SP98: 'sp98',
-};
 
 const LOWERCASE_PARTICLES = new Set(['au', 'aux', 'de', 'des', 'du', 'en', 'et', 'la', 'le', 'les', 'sous', 'sur']);
 const UPPERCASE_WORDS = new Set(['bp', 'cc', 'cd', 'chu', 'rd', 'rn', 'za', 'zac', 'zae', 'zi']);
@@ -139,6 +128,15 @@ export async function fetchStationsInRegion({ forceRefresh = false, fuel, limit,
   };
 }
 
+/** Price history of the stations in the area. Null while the yearly archives are loading. */
+export async function fetchZoneHistory({ fuel, region }) {
+  const { stations } = await getSnapshot();
+  const bounds = getRegionBounds(region);
+  const stationIds = stations.filter((station) => isInBounds(getPosition(station), bounds)).map((station) => station.id);
+
+  return getZoneHistory(stationIds, fuel);
+}
+
 export async function getStationById(id) {
   const { byId, fetchedAt } = await getSnapshot();
   const station = byId.get(id) ?? null;
@@ -212,6 +210,7 @@ function loadSnapshot() {
           const changedPrices = previous ? countChangedPrices(previous, nextSnapshot) : 0;
 
           snapshot = nextSnapshot;
+          recordSnapshot(nextSnapshot);
           console.log(`[fuel] ${nextSnapshot.stations.length} stations loaded, ${changedPrices} prices changed`);
 
           if (previous) {
@@ -351,14 +350,9 @@ function mapStation(raw, now) {
       continue;
     }
 
-    let value = Number(price.valeur);
+    const value = parsePriceValue(price.valeur);
 
-    // Older versions of the feed expressed prices in thousandths of a euro.
-    if (value > 100) {
-      value /= 1000;
-    }
-
-    if (!Number.isFinite(value) || value < MIN_VALID_PRICE || value > MAX_VALID_PRICE) {
+    if (value == null) {
       continue;
     }
 
@@ -368,10 +362,7 @@ function mapStation(raw, now) {
       continue;
     }
 
-    prices[fuelKey] = {
-      updatedAt,
-      value: Math.round(value * 1000) / 1000,
-    };
+    prices[fuelKey] = { updatedAt, value };
   }
 
   const postcode = String(raw.cp ?? '').trim();

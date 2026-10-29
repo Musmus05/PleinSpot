@@ -16,14 +16,15 @@ import { SearchBox } from './components/SearchBox';
 import { StationDetails } from './components/StationDetails';
 import { ListEntry, StationList } from './components/StationList';
 import { MapPadding, MapViewportRequest, StationMap } from './components/StationMap';
-import { Button, IconButton } from './components/ui';
-import { ZoneSummary } from './components/ZoneSummary';
+import { Button, IconButton, Segmented } from './components/ui';
+import { ZonePeriod, ZoneSummary } from './components/ZoneSummary';
 import { openConsentSettings, track } from './lib/analytics';
-import { fetchStation, fetchStations, subscribeToPriceUpdates } from './lib/api';
+import { fetchStation, fetchStationHistory, fetchStations, fetchZoneHistory, subscribeToPriceUpdates } from './lib/api';
 import { getStationTitle } from './lib/brands';
 import { AppLanguage, copy } from './lib/copy';
 import { formatCount, formatPrice, formatPriceValue, formatRelativeTime, getDistanceInKm } from './lib/format';
 import { DEFAULT_FUEL, FUEL_META, FuelKey, isFuelKey } from './lib/fuels';
+import { DEFAULT_HISTORY_RANGE, HistoryRange, isHistoryRange, useHistoryData } from './lib/history';
 import { readPreference, writePreference } from './lib/storage';
 import { isMapView, readUrlState, writeUrlState } from './lib/urlState';
 import { breakpoints, colors, fonts, motion, radius, shadows, tierColors, type } from './theme';
@@ -43,6 +44,8 @@ const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
 // A price that moved stays marked as "just changed" for this long.
 const RECENT_CHANGE_MS = 30 * 60 * 1000;
 const CLOCK_TICK_MS = 30 * 1000;
+// The zone history follows the map: wait for the map to settle before asking for it.
+const HISTORY_DEBOUNCE_MS = 400;
 
 type SortMode = 'price' | 'distance';
 type LoadState = 'loading' | 'ready' | 'error';
@@ -89,6 +92,7 @@ function getInitialState() {
   return {
     fuel: url.fuel ?? readPreference('fuel', isFuelKey) ?? DEFAULT_FUEL,
     hasUrlPosition: url.view != null || url.stationId != null,
+    historyRange: readPreference('historyRange', isHistoryRange) ?? DEFAULT_HISTORY_RANGE,
     language: readPreference('language', isLanguage) ?? (navigatorLanguage.toLowerCase().startsWith('fr') ? 'fr' : 'en'),
     mapView: (() => {
       const view = url.view ?? readPreference('view', isMapView);
@@ -126,6 +130,9 @@ function PleinSpot() {
   const [isLive, setIsLive] = useState(false);
   const [recentChanges, setRecentChanges] = useState<PriceChanges>({});
   const [liveMessage, setLiveMessage] = useState<string | null>(null);
+  const [historyRange, setHistoryRange] = useState<HistoryRange>(initial.historyRange);
+  // The zone summary opens on today's prices: the history is one tap away, not in the way.
+  const [zoneView, setZoneView] = useState<'today' | 'history'>('today');
   const forceRefreshRef = useRef(false);
   const responseRef = useRef<StationsResponse | null>(null);
 
@@ -142,6 +149,26 @@ function PleinSpot() {
   const stats = response?.stats ?? null;
   const stations = response?.stations ?? [];
   const bestPrice = stats && stats.count > 1 ? stats.min : null;
+  const dataVersion = response?.fetchedAt ?? null;
+  const needsZoneHistory = zoneView === 'history' || selected != null;
+  const zoneHistoryKey =
+    region && needsZoneHistory
+      ? [displayFuel, region.latitude, region.longitude, region.latitudeDelta, region.longitudeDelta]
+          .map((value) => (typeof value === 'number' ? value.toFixed(4) : value))
+          .concat(dataVersion ?? '')
+          .join('|')
+      : null;
+  const zoneHistory = useHistoryData({
+    debounceMs: HISTORY_DEBOUNCE_MS,
+    key: zoneHistoryKey,
+    load: () => fetchZoneHistory({ fuel: displayFuel, region: region!, version: dataVersion }),
+    scope: displayFuel,
+  });
+  const stationHistory = useHistoryData({
+    key: selected ? `${selected.id}|${dataVersion ?? ''}` : null,
+    load: () => fetchStationHistory(selected!.id, dataVersion),
+    scope: String(selected?.id ?? ''),
+  });
 
   const tokenRef = useRef(0);
 
@@ -277,6 +304,10 @@ function PleinSpot() {
   useEffect(() => {
     writePreference('fuel', fuel);
   }, [fuel]);
+
+  useEffect(() => {
+    writePreference('historyRange', historyRange);
+  }, [historyRange]);
 
   useEffect(() => {
     writePreference('language', language);
@@ -423,6 +454,25 @@ function PleinSpot() {
     }
   }
 
+  function changeZonePeriod(period: ZonePeriod) {
+    if (period === 'today') {
+      setZoneView('today');
+    } else {
+      setZoneView('history');
+      changeHistoryRange(period);
+    }
+
+    track('select_period', { period: String(period), scope: 'zone' });
+  }
+
+  function changeHistoryRange(range: HistoryRange) {
+    setHistoryRange(range);
+
+    if (selected) {
+      track('select_period', { period: String(range), scope: 'station' });
+    }
+  }
+
   function changeSort(mode: SortMode) {
     setSortMode(mode);
 
@@ -481,8 +531,11 @@ function PleinSpot() {
         <ZoneSummary
           distribution={response.distribution}
           fuel={displayFuel}
+          history={zoneHistory}
           language={language}
           national={response.national}
+          onChangePeriod={changeZonePeriod}
+          period={zoneView === 'today' ? 'today' : historyRange}
           showTitle={isDesktop}
           stats={stats}
           total={response.total}
@@ -538,16 +591,20 @@ function PleinSpot() {
       distanceKm={selectedDistance}
       distribution={response?.distribution ?? null}
       fuel={displayFuel}
+      history={stationHistory}
+      historyRange={historyRange}
       language={language}
       national={response?.national ?? null}
       now={now}
       onBack={() => setSelected(null)}
       onChangeFuel={changeFuel}
+      onChangeHistoryRange={changeHistoryRange}
       rank={selectedRank}
       station={selected}
       stats={stats}
       total={response?.total ?? 0}
       variant={isDesktop ? 'panel' : 'sheet'}
+      zoneHistory={zoneHistory.data}
     />
   ) : null;
 
@@ -878,41 +935,6 @@ function LanguageToggle({ language, onChange }: { language: AppLanguage; onChang
   );
 }
 
-function Segmented<T extends string>({
-  onChange,
-  options,
-  value,
-}: {
-  onChange: (value: T) => void;
-  options: Array<{ label: string; value: T }>;
-  value: T;
-}) {
-  return (
-    <View accessibilityRole="radiogroup" style={styles.segmented}>
-      {options.map((option, index) => {
-        const isActive = option.value === value;
-
-        return (
-          <Pressable
-            accessibilityRole="radio"
-            accessibilityState={{ checked: isActive }}
-            key={option.value}
-            onPress={() => onChange(option.value)}
-            style={({ hovered }) => [
-              styles.segment,
-              index > 0 && styles.segmentRule,
-              hovered && !isActive && styles.segmentHovered,
-              isActive && styles.segmentActive,
-            ]}
-          >
-            <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>{option.label}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
 function MapLegend({ language }: { language: AppLanguage }) {
   const t = copy[language].legend;
 
@@ -1233,36 +1255,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
     fontSize: type.small,
     lineHeight: 20,
-  },
-  segment: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  segmentActive: {
-    backgroundColor: colors.blueTint,
-  },
-  segmentHovered: {
-    backgroundColor: colors.ground,
-  },
-  segmentRule: {
-    borderLeftColor: colors.ruleStrong,
-    borderLeftWidth: 1,
-  },
-  segmentText: {
-    color: colors.grey,
-    fontFamily: fonts.medium,
-    fontSize: type.small,
-  },
-  segmentTextActive: {
-    color: colors.blue,
-    fontFamily: fonts.semibold,
-  },
-  segmented: {
-    borderColor: colors.ruleStrong,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    flexDirection: 'row',
-    overflow: 'hidden',
   },
   sheet: {
     backgroundColor: colors.white,

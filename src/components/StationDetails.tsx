@@ -6,33 +6,40 @@ import { getBrandLabel, getStationTitle } from '../lib/brands';
 import { AppLanguage, copy } from '../lib/copy';
 import { formatCents, formatCount, formatDistance, formatMoney, formatPrice, formatRelativeTime } from '../lib/format';
 import { FUEL_META, FUEL_OPTIONS, FuelKey } from '../lib/fuels';
+import { HISTORY_RANGES, HistoryLoad, HistoryRange } from '../lib/history';
 import { getPriceChange, getPriceTier, getTankSavings, isPriceStale, PriceChanges, TANK_LITERS } from '../lib/pricing';
 import { getOpeningState, getParisClock, getWeekRows, OpeningState } from '../lib/schedule';
 import { buildShareUrl } from '../lib/urlState';
-import type { PriceDistribution, PriceStats, Station } from '../types/station';
+import type { PriceDistribution, PriceStats, Station, StationHistory, ZoneHistory } from '../types/station';
 import { colors, fonts, motion, type } from '../theme';
 import { FuelBadge } from './FuelBadge';
 import { ArrowLeft, Check, ExternalLink, LinkIcon, Navigation, Share, TriangleAlert } from './icons';
+import { StationHistoryView } from './PriceHistory';
 import { PriceChangeTag, PriceSlat } from './PriceSlat';
 import { PriceStrip } from './PriceStrip';
 import { describeOpening } from './StationList';
-import { Button, IconButton, SectionTitle } from './ui';
+import { Button, IconButton, SectionTitle, Segmented } from './ui';
 
 type StationDetailsProps = {
   changes: PriceChanges;
   distanceKm: number | null;
   distribution: PriceDistribution | null;
   fuel: FuelKey;
+  history: HistoryLoad<StationHistory>;
+  historyRange: HistoryRange;
   language: AppLanguage;
   national: PriceStats | null;
   now: number;
   onBack: () => void;
   onChangeFuel: (fuel: FuelKey) => void;
+  onChangeHistoryRange: (range: HistoryRange) => void;
   rank: number | null;
   station: Station;
   stats: PriceStats | null;
   total: number;
   variant: 'panel' | 'sheet';
+  /** History of the area on the map, the station's point of comparison. */
+  zoneHistory: ZoneHistory | null;
 };
 
 export function StationDetails({
@@ -40,16 +47,20 @@ export function StationDetails({
   distanceKm,
   distribution,
   fuel,
+  history,
+  historyRange,
   language,
   national,
   now,
   onBack,
   onChangeFuel,
+  onChangeHistoryRange,
   rank,
   station,
   stats,
   total,
   variant,
+  zoneHistory,
 }: StationDetailsProps) {
   const t = copy[language];
   const [shareFeedback, setShareFeedback] = useState(false);
@@ -218,6 +229,22 @@ export function StationDetails({
             <Text style={styles.warningText}>{t.details.stalePrice}</Text>
           </View>
         ) : null}
+      </View>
+
+      <View style={styles.section}>
+        <SectionTitle
+          right={
+            <Segmented<HistoryRange>
+              accessibilityLabel={t.history.periodLabel}
+              onChange={onChangeHistoryRange}
+              options={HISTORY_RANGES.map((range) => ({ label: t.history.periods[range], value: range }))}
+              value={historyRange}
+            />
+          }
+        >
+          {t.history.title}
+        </SectionTitle>
+        <StationHistoryView fuel={fuel} language={language} load={history} range={historyRange} zone={zoneHistory} />
       </View>
 
       <View style={styles.section}>

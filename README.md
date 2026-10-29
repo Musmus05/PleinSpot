@@ -12,6 +12,7 @@ Le projet a été réalisé comme prototype fonctionnel dans le cadre d’un pro
 - Statistiques de la zone (mini, moyenne, maxi, nombre de stations) et comparaison avec la moyenne nationale.
 - Liste triable par prix ou par distance, avec nom et enseigne des stations (OpenStreetMap), statut d’ouverture et ancienneté du prix.
 - Fiche station : totem de tous les carburants, rang dans la zone, économie estimée sur un plein de 50 L, ruptures en cours, horaires de la semaine (ouvert/fermé en temps réel, heure de Paris), services, itinéraire Google Maps ou Waze, partage.
+- **Historique des prix sur 1 mois, 3 mois ou 1 an** : pour la zone affichée (moyenne, prix le plus bas, moyenne nationale) et pour chaque station (comparée à la moyenne de la zone). Graphique lisible à la souris, au doigt et au clavier, phrase de synthèse, repères (plus bas, plus haut, écart), tableau des valeurs ou des changements de prix.
 - Recherche par ville, code postal ou adresse, avec navigation au clavier.
 - Liens partageables (`?carburant=e10&lat=…&lng=…&z=…` ou `?station=…`), préférences mémorisées (carburant, langue, dernière zone).
 - Interface en français et en anglais, mise en page dédiée desktop et mobile.
@@ -42,6 +43,8 @@ C'est la source la plus fraîche disponible : le ministère la reconstruit toute
 
 Ce flux fournit une archive contenant les informations des stations et les prix déclarés. Le backend la télécharge, la décompresse, lit le XML, normalise les stations, puis renvoie seulement les résultats utiles à la zone affichée.
 
+L'**historique** vient des archives annuelles du même système, qui contiennent chaque prix déclaré par chaque station (`https://donnees.roulez-eco.fr/opendata/annee/{année}`, environ 30 Mo compressés et 350 Mo de XML par an, reconstruites chaque nuit). Au démarrage, le serveur lit l'année en cours et la précédente en flux, sans jamais tenir le XML en mémoire, et garde pour chaque station et carburant le prix en vigueur à la fin de chaque jour sur les 366 derniers jours (environ 30 Mo de tableaux d'entiers). Un prix reste en vigueur jusqu'à la déclaration suivante, au plus 30 jours, comme pour les prix en direct. Les prix à plus de 30 % de la moyenne nationale du jour (erreurs de saisie du type « 1,250 » pour « 2,250 ») sont écartés. Les prix du flux en direct deviennent ceux du jour, et l'historique est rechargé une fois par jour. Les archives sont gardées sur disque et revalidées par une requête HEAD : un redémarrage le même jour ne retélécharge rien.
+
 Le nom, l’enseigne et la **position exacte** des stations viennent d’OpenStreetMap. Les coordonnées du flux officiel sont déclarées par les stations et souvent approximatives (plus de 100 m d’écart pour environ 2 800 stations, plus d’1 km pour environ 390) ; les contributeurs OpenStreetMap placent la station sur ses pompes. PleinSpot utilise cette position dès qu’elle est à moins de 3 km de la position officielle, sinon il garde l’officielle. Ces données viennent d’OpenStreetMap, qui porte l’identifiant officiel de 99,6 % des stations dans le tag `ref:FR:prix-carburants`. Le serveur télécharge chaque jour l’export de l’outil Osmose (497 Ko compressé) et fait la jointure sur cet identifiant. Données © contributeurs OpenStreetMap, licence ODbL : l’attribution est affichée dans l’application.
 
 La recherche de communes utilise l’API publique `https://geo.api.gouv.fr/communes` et le fond de carte provient d’OpenFreeMap (`https://tiles.openfreemap.org/styles/positron`, données © OpenMapTiles, © OpenStreetMap).
@@ -53,6 +56,8 @@ La recherche de communes utilise l’API publique `https://geo.api.gouv.fr/commu
 |-- backend/
 |   |-- server.mjs                # Serveur HTTP : API, fichiers statiques, compression, en-têtes de sécurité
 |   |-- fuelDataService.mjs       # Flux officiel : téléchargement, cache, rafraîchissement, statistiques
+|   |-- priceHistoryService.mjs   # Historique : archives annuelles lues en flux, prix par jour sur un an
+|   |-- fuels.mjs                 # Carburants et lecture des prix, partagés par les deux services
 |   |-- stationMetaService.mjs    # Nom et enseigne des stations (OpenStreetMap via Osmose)
 |   `-- citySearchService.mjs     # Recherche de communes et codes postaux
 |-- src/
@@ -131,6 +136,8 @@ Routes principales :
 - `GET /api/health`
 - `GET /api/stations?latitude=48.85&longitude=2.35&latitudeDelta=0.1&longitudeDelta=0.14&fuel=gazole&limit=200` : stations de la zone triées par prix, statistiques de la zone, moyenne nationale et prix minimum par carburant
 - `GET /api/stations/{id}` : une station (avec nom et enseigne)
+- `GET /api/stations/{id}/history` : prix par jour de la station sur un an, pour chaque carburant (en millièmes d'euro, `null` les jours sans prix)
+- `GET /api/history?latitude=…&longitude=…&latitudeDelta=…&longitudeDelta=…&fuel=gazole` : moyenne et prix le plus bas des stations de la zone, jour par jour sur un an, et moyenne nationale. Ces deux routes répondent 503 pendant les quelques secondes de chargement des archives après un démarrage.
 - `GET /api/live` : flux Server-Sent Events, un événement `prices` à chaque nouvelle publication officielle
 - `GET /api/cities?q=lyon` ou `?q=69003`
 
@@ -146,7 +153,7 @@ Optionnellement, le frontend peut pointer vers un backend précis :
 EXPO_PUBLIC_API_BASE_URL=http://localhost:4000
 ```
 
-Côté serveur, `FUEL_FEED_URL` remplace l’adresse du flux officiel (serveur de recette, tests du temps réel avec un fichier modifié).
+Côté serveur, `FUEL_FEED_URL` remplace l’adresse du flux officiel (serveur de recette, tests du temps réel avec un fichier modifié), et `HISTORY_CACHE_DIR` le dossier où sont gardées les archives annuelles (par défaut `pleinspot-history` dans le dossier temporaire du système).
 
 En production, les secrets ou variables sensibles doivent être configurés côté hébergeur, jamais ajoutés dans le code.
 

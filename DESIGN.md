@@ -22,6 +22,7 @@ Partout où un prix apparaît, il est composé comme une latte de totem de stati
 | `blue` | `#0A4A8F` (RAL 5017) | bandeau du panneau, action principale, sélection, focus |
 | `blueDeep` | `#073A72` | survol / appui de `blue` |
 | `blueTint` | `#E7EEF7` | ligne sélectionnée, survol de liste |
+| `blueLight` | `#5C8FD6` | seconde série d'un graphique, à côté de `blue` (plus bas de la zone) |
 | `green` | `#008351` (RAL 6024) | prix bas, « ouvert » |
 | `yellow` | `#F7B500` (RAL 1023), texte noir | prix moyen |
 | `red` | `#CC0605` (RAL 3020) | prix élevé, « fermé », erreurs |
@@ -56,7 +57,19 @@ Un seul moment animé, parce qu'il porte une vraie nouvelle : quand un prix chan
 
 ## Usage quotidien
 
-PleinSpot n'est pas un outil d'analyse : pas d'historique, pas de graphiques. On ouvre, on voit le prix le moins cher autour de soi, à jour, et on y va.
+On ouvre, on voit le prix le moins cher autour de soi, à jour, et on y va : c'est ce que montre le premier écran. L'historique est la deuxième couche, à un geste : le sélecteur de période du résumé de zone (« Aujourd'hui » par défaut) et la section « Historique » de la fiche station.
+
+## Graphiques
+
+Un seul type : l'évolution d'un prix jour par jour, sur 1 mois, 3 mois ou 1 an.
+
+- La série qui compte en `blue`, ses points de comparaison après elle : `blueLight` (plus bas de la zone), `greyLight` (moyenne de la zone, moyenne nationale). Trois séries au plus.
+- Le prix d'une station en marches (il tient jusqu'au changement suivant), les moyennes en lignes. Traits de 2 px, point de fin de 8 px cerclé de blanc, valeur du dernier jour à droite en Barlow Condensed.
+- Grille horizontale en filets `rule` de 1 px, pleins. Repères au premier du mois (au lundi sur 1 mois), l'année à la place de janvier. Jamais de second axe.
+- Une phrase au-dessus du graphique dit ce qu'il montre (« Prix en hausse de 12 ct en 3 mois, de 2,249 € à 2,373 € »), des phrases en dessous donnent les repères (plus bas, plus haut, écart avec la zone). Pas de tuile « gros chiffre ».
+- Réticule à la souris, au doigt et aux flèches du clavier ; l'infobulle flotte (ombre, pas de filet) et lit toutes les séries du jour, valeur d'abord. Légende toujours visible, tableau des valeurs à la demande.
+- Pendant un rechargement, le graphique précédent reste à l'écran, atténué. Rien ne s'anime à l'arrivée des données.
+- Le prix le plus haut de la zone n'est pas tracé : quelques stations d'autoroute écraseraient l'échelle.
 
 ## Écarts de prix
 

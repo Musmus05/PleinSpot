@@ -1,9 +1,21 @@
-import type { CitySearchResult, PriceUpdate, Station, StationsResponse } from '../types/station';
+import type {
+  CitySearchResult,
+  DailyPrices,
+  PriceUpdate,
+  Station,
+  StationHistory,
+  StationsResponse,
+  ZoneHistory,
+} from '../types/station';
 import type { MapRegion } from '../types/map';
 import type { FuelKey } from './fuels';
 
 const STATIONS_CACHE_TTL_MS = 30 * 1000;
+const HISTORY_CACHE_TTL_MS = 5 * 60 * 1000;
 const stationsCache = new Map<string, { expiresAt: number; value: StationsResponse }>();
+// Requests rather than results: the zone summary and the station panel ask for the same zone
+// history at the same time, and share one request.
+const historyCache = new Map<string, { expiresAt: number; value: Promise<unknown> }>();
 const citiesCache = new Map<string, CitySearchResult[]>();
 
 export function getApiBaseUrl() {
@@ -94,6 +106,77 @@ export async function fetchStation(stationId: number) {
   } catch {
     return null;
   }
+}
+
+/** Daily prices of the stations in the area over the last year. */
+export function fetchZoneHistory({
+  fuel,
+  region,
+  version,
+}: {
+  fuel: FuelKey;
+  region: MapRegion;
+  version?: string | null;
+}): Promise<ZoneHistory> {
+  const params = new URLSearchParams({
+    fuel,
+    latitude: region.latitude.toFixed(4),
+    latitudeDelta: region.latitudeDelta.toFixed(4),
+    longitude: region.longitude.toFixed(4),
+    longitudeDelta: region.longitudeDelta.toFixed(4),
+  });
+
+  if (version) {
+    params.set('v', version);
+  }
+
+  return fetchHistory(`/api/history?${params.toString()}`, (raw: ZoneHistory) => ({
+    ...raw,
+    mean: toEuros(raw.mean),
+    min: toEuros(raw.min),
+    national: toEuros(raw.national),
+  }));
+}
+
+/** Daily prices of one station over the last year, for each fuel it sold. */
+export function fetchStationHistory(stationId: number, version?: string | null): Promise<StationHistory> {
+  return fetchHistory(`/api/stations/${stationId}/history${version ? `?v=${encodeURIComponent(version)}` : ''}`, (raw: StationHistory) => ({
+    ...raw,
+    fuels: Object.fromEntries(Object.entries(raw.fuels).map(([fuel, values]) => [fuel, toEuros(values)])),
+  }));
+}
+
+function fetchHistory<Raw, Value>(path: string, convert: (raw: Raw) => Value): Promise<Value> {
+  const cached = historyCache.get(path);
+
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value as Promise<Value>;
+  }
+
+  const value = fetch(`${getApiBaseUrl()}${path}`).then(async (response) => {
+    if (!response.ok) {
+      throw new Error(await readErrorMessage(response));
+    }
+
+    return convert((await response.json()) as Raw);
+  });
+
+  historyCache.set(path, { expiresAt: Date.now() + HISTORY_CACHE_TTL_MS, value });
+  // A failed request (the server is still reading the archives) must be retried, not cached.
+  value.catch(() => historyCache.delete(path));
+
+  for (const [key, entry] of historyCache) {
+    if (entry.expiresAt <= Date.now()) {
+      historyCache.delete(key);
+    }
+  }
+
+  return value;
+}
+
+/** The API sends thousandths of a euro, which keeps a year of prices small. */
+function toEuros(values: DailyPrices) {
+  return values.map((value) => (value == null ? null : value / 1000));
 }
 
 const LIVE_FALLBACK_POLL_MS = 60 * 1000;

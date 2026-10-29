@@ -93,6 +93,45 @@ export function Button({
   );
 }
 
+export function Segmented<T extends string | number>({
+  accessibilityLabel,
+  onChange,
+  options,
+  value,
+}: {
+  accessibilityLabel?: string;
+  onChange: (value: T) => void;
+  options: Array<{ label: string; value: T }>;
+  value: T;
+}) {
+  return (
+    <View accessibilityLabel={accessibilityLabel} accessibilityRole="radiogroup" style={styles.segmented}>
+      {options.map((option, index) => {
+        const isActive = option.value === value;
+
+        return (
+          <Pressable
+            accessibilityRole="radio"
+            // react-native-web reads aria-checked, not accessibilityState.checked.
+            aria-checked={isActive}
+            key={option.value}
+            onPress={() => onChange(option.value)}
+            style={({ hovered }) => [
+              styles.segment,
+              transition,
+              index > 0 && styles.segmentRule,
+              hovered && !isActive && styles.segmentHovered,
+              isActive && styles.segmentActive,
+            ]}
+          >
+            <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>{option.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export function SectionTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
   return (
     <View style={styles.sectionTitleRow}>
@@ -162,6 +201,36 @@ const styles = StyleSheet.create({
     color: colors.black,
     fontFamily: fonts.semibold,
     fontSize: type.heading,
+  },
+  segment: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  segmentActive: {
+    backgroundColor: colors.blueTint,
+  },
+  segmentHovered: {
+    backgroundColor: colors.ground,
+  },
+  segmentRule: {
+    borderLeftColor: colors.ruleStrong,
+    borderLeftWidth: 1,
+  },
+  segmentText: {
+    color: colors.grey,
+    fontFamily: fonts.medium,
+    fontSize: type.small,
+  },
+  segmentTextActive: {
+    color: colors.blue,
+    fontFamily: fonts.semibold,
+  },
+  segmented: {
+    borderColor: colors.ruleStrong,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    flexDirection: 'row',
+    overflow: 'hidden',
   },
   sectionTitleRow: {
     alignItems: 'baseline',

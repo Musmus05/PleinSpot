@@ -7,13 +7,15 @@ import { brotliCompressSync, constants as zlibConstants, gzipSync } from 'node:z
 
 import { searchCities } from './citySearchService.mjs';
 import {
-  FUEL_KEYS,
   fetchStationsInRegion,
+  fetchZoneHistory,
   getDataStatus,
   getStationById,
   onPricesUpdate,
   startFuelDataRefresh,
 } from './fuelDataService.mjs';
+import { FUEL_KEYS } from './fuels.mjs';
+import { getHistoryStatus, getStationHistory, startPriceHistory } from './priceHistoryService.mjs';
 import { getStationMetaStatus, startStationMetaRefresh } from './stationMetaService.mjs';
 
 const PORT = Number(process.env.PORT || 4000);
@@ -29,6 +31,8 @@ const liveClients = new Set();
 const MAX_LIVE_CLIENTS = 5000;
 // Heroku's router closes connections idle for 55 s.
 const LIVE_HEARTBEAT_MS = 25 * 1000;
+// The yearly archives take a few seconds to download and read after each start.
+const HISTORY_LOADING_MESSAGE = "L'historique des prix est en cours de chargement.";
 
 const CONTENT_TYPES = {
   '.css': 'text/css; charset=utf-8',
@@ -125,7 +129,7 @@ async function handleApiRequest(request, response, url) {
       request,
       response,
       200,
-      { ok: true, service: 'pleinspot-backend', ...getDataStatus(), ...getStationMetaStatus() },
+      { ok: true, service: 'pleinspot-backend', ...getDataStatus(), ...getStationMetaStatus(), ...getHistoryStatus() },
       'no-store',
     );
     return;
@@ -137,12 +141,7 @@ async function handleApiRequest(request, response, url) {
   }
 
   if (pathname === '/api/stations') {
-    const region = {
-      latitude: Number(searchParams.get('latitude')),
-      latitudeDelta: Number(searchParams.get('latitudeDelta')),
-      longitude: Number(searchParams.get('longitude')),
-      longitudeDelta: Number(searchParams.get('longitudeDelta')),
-    };
+    const region = readRegion(searchParams);
 
     if (!isValidRegion(region)) {
       sendJson(request, response, 400, { error: 'Missing or invalid region query parameters.' });
@@ -169,6 +168,45 @@ async function handleApiRequest(request, response, url) {
       console.error('[api] stations failed:', error.message);
       sendJson(request, response, 503, { error: 'Les données officielles sont momentanément indisponibles.' });
     }
+    return;
+  }
+
+  if (pathname === '/api/history') {
+    const region = readRegion(searchParams);
+    const fuel = parseFuel(searchParams.get('fuel'));
+
+    if (!isValidRegion(region) || !fuel) {
+      sendJson(request, response, 400, { error: 'Missing or invalid region or fuel query parameters.' });
+      return;
+    }
+
+    try {
+      const result = await fetchZoneHistory({ fuel, region });
+
+      if (!result) {
+        sendJson(request, response, 503, { error: HISTORY_LOADING_MESSAGE }, 'no-store');
+        return;
+      }
+
+      sendJson(request, response, 200, result, 'public, max-age=300');
+    } catch (error) {
+      console.error('[api] history failed:', error.message);
+      sendJson(request, response, 503, { error: 'Les données officielles sont momentanément indisponibles.' });
+    }
+    return;
+  }
+
+  const stationHistoryMatch = /^\/api\/stations\/(\d{1,12})\/history$/.exec(pathname);
+
+  if (stationHistoryMatch) {
+    const result = getStationHistory(Number(stationHistoryMatch[1]));
+
+    if (!result) {
+      sendJson(request, response, 503, { error: HISTORY_LOADING_MESSAGE }, 'no-store');
+      return;
+    }
+
+    sendJson(request, response, 200, result, 'public, max-age=300');
     return;
   }
 
@@ -415,6 +453,15 @@ function getOrigin(value) {
   }
 }
 
+function readRegion(searchParams) {
+  return {
+    latitude: Number(searchParams.get('latitude')),
+    latitudeDelta: Number(searchParams.get('latitudeDelta')),
+    longitude: Number(searchParams.get('longitude')),
+    longitudeDelta: Number(searchParams.get('longitudeDelta')),
+  };
+}
+
 function isValidRegion(region) {
   return (
     Object.values(region).every(Number.isFinite) &&
@@ -445,6 +492,7 @@ server.listen(PORT, () => {
   );
   startFuelDataRefresh();
   startStationMetaRefresh();
+  startPriceHistory();
 });
 
 export { server };
