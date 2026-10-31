@@ -79,7 +79,7 @@ La recherche de communes utilise l’API publique `https://geo.api.gouv.fr/commu
 |   |-- theme.ts                  # Couleurs, typographie, rayons, ombres
 |   `-- AppShell.tsx              # État de l’application et mise en page desktop / mobile
 |-- assets/                       # Logo source et favicon
-|-- public/                       # index.html (SEO, consentement), manifeste PWA, icônes, image de partage
+|-- public/                       # index.html (SEO, consentement), robots.txt, sitemap.xml, manifeste PWA, icônes, image de partage
 |-- App.tsx
 |-- index.ts
 |-- package.json
@@ -166,6 +166,8 @@ EXPO_PUBLIC_API_BASE_URL=http://localhost:4000
 ```
 
 Côté serveur, `FUEL_FEED_URL` remplace l’adresse du flux officiel (serveur de recette, tests du temps réel avec un fichier modifié), et `HISTORY_CACHE_DIR` le dossier où sont gardées les archives annuelles (par défaut `pleinspot-history` dans le dossier temporaire du système).
+
+`PUBLIC_ORIGIN` est l’adresse officielle du site, `https://pleinspot.app` par défaut quand `NODE_ENV=production` (aucune en local). Toute requête de page arrivée par une autre adresse (`http://`, `www.`, `*.herokuapp.com`) reçoit une redirection 301 vers celle-ci, chemin et paramètres compris ; les routes `/api/*` ne sont jamais redirigées. La balise canonique, `og:url`, `robots.txt` et `sitemap.xml` donnent cette adresse : sans elle, chaque variante se déclarait canonique et Google indexait `http://pleinspot.app/`. Une autre instance du projet doit définir sa propre `PUBLIC_ORIGIN`.
 
 En production, les secrets ou variables sensibles doivent être configurés côté hébergeur, jamais ajoutés dans le code.
 

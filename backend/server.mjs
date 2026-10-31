@@ -33,6 +33,14 @@ const MAX_LIVE_CLIENTS = 5000;
 const LIVE_HEARTBEAT_MS = 25 * 1000;
 // The yearly archives take a few seconds to download and read after each start.
 const HISTORY_LOADING_MESSAGE = "L'historique des prix est en cours de chargement.";
+// The one address search engines index. Served under several (http://, www., *.herokuapp.com),
+// the app was four duplicate sites, each declaring itself canonical, and Google picked the
+// http one. Every other address now answers with a 301 to this one, and the canonical link,
+// the sitemap and robots.txt name it. PUBLIC_ORIGIN overrides it; local servers have none.
+const CANONICAL_ORIGIN =
+  getOrigin(process.env.PUBLIC_ORIGIN) || (process.env.NODE_ENV === 'production' ? 'https://pleinspot.app' : null);
+// Small text files that name the site's address, filled in like index.html.
+const TEMPLATED_FILES = new Set(['/robots.txt', '/sitemap.xml']);
 
 const CONTENT_TYPES = {
   '.css': 'text/css; charset=utf-8',
@@ -87,6 +95,14 @@ const server = createServer(async (request, response) => {
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       response.setHeader('Allow', 'GET, HEAD');
       sendText(response, 405, 'Method not allowed.');
+      return;
+    }
+
+    const canonicalUrl = getCanonicalRedirect(request, url);
+
+    if (canonicalUrl) {
+      response.writeHead(301, { 'Cache-Control': 'public, max-age=86400', Location: canonicalUrl });
+      response.end();
       return;
     }
 
@@ -244,6 +260,13 @@ async function serveStaticAsset(request, response, pathname) {
   const filePath = resolveStaticPath(pathname);
 
   if (filePath && filePath !== INDEX_FILE && (await isFile(filePath))) {
+    if (TEMPLATED_FILES.has(pathname)) {
+      const text = (await readFile(filePath, 'utf8')).replaceAll('__ORIGIN__', getSiteOrigin(request));
+
+      sendBody(request, response, 200, Buffer.from(text), CONTENT_TYPES[extname(filePath)], 'public, max-age=3600');
+      return true;
+    }
+
     await sendFile(request, response, filePath);
     return true;
   }
@@ -293,8 +316,7 @@ setInterval(() => {
 }, LIVE_HEARTBEAT_MS).unref();
 
 function sendIndex(request, response) {
-  const origin = getPublicOrigin(request);
-  const html = indexTemplate.replaceAll('__ORIGIN__', origin);
+  const html = indexTemplate.replaceAll('__ORIGIN__', getSiteOrigin(request));
 
   response.setHeader('Content-Security-Policy', contentSecurityPolicy);
   sendBody(request, response, 200, Buffer.from(html), CONTENT_TYPES['.html'], 'no-cache');
@@ -416,6 +438,22 @@ function getPublicOrigin(request) {
     .trim();
 
   return /^[a-z0-9.\-:[\]]+$/i.test(host) ? `${protocol}://${host}` : '';
+}
+
+/** The address the site names itself by: the canonical one, or the one asked for locally. */
+function getSiteOrigin(request) {
+  return CANONICAL_ORIGIN ?? getPublicOrigin(request);
+}
+
+/** Same path and query on the canonical address, when the request came in on another one. */
+function getCanonicalRedirect(request, url) {
+  const origin = getPublicOrigin(request).toLowerCase();
+
+  if (!CANONICAL_ORIGIN || !origin || origin === CANONICAL_ORIGIN) {
+    return null;
+  }
+
+  return `${CANONICAL_ORIGIN}${url.pathname}${url.search}`;
 }
 
 function buildContentSecurityPolicy(html) {
