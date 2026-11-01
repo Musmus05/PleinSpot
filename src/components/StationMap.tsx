@@ -11,13 +11,17 @@ import type { FuelKey } from '../lib/fuels';
 import { getPriceChange, getPriceTier, isPriceStale, PriceChanges, PriceTier } from '../lib/pricing';
 import type { LatLng, PriceStats, Station } from '../types/station';
 import type { MapRegion, MapView } from '../types/map';
-import { colors, fonts, motion, radius, shadows, tierColors } from '../theme';
+import { colors, fonts, motion, radius, tierColors } from '../theme';
 import { Basemap, BASEMAP_BACKGROUND } from './Basemap';
 
 export type MapPadding = { bottom: number; left: number; right: number; top: number };
 
 export type MapViewportRequest = {
-  target: { kind: 'region'; region: MapRegion } | { kind: 'point'; coordinates: LatLng };
+  target:
+    | { kind: 'region'; region: MapRegion }
+    | { kind: 'point'; coordinates: LatLng }
+    // The zoom buttons live with the other map controls, outside Leaflet.
+    | { kind: 'zoom'; delta: 1 | -1 };
   token: number;
 };
 
@@ -84,7 +88,6 @@ export function StationMap({
       >
         <Basemap />
         <MapBehaviour
-          compact={compact}
           onMapPress={onMapPress}
           onRegionChange={onRegionChange}
           onUserDrag={onUserDrag}
@@ -118,13 +121,12 @@ export function StationMap({
 }
 
 function MapBehaviour({
-  compact,
   onMapPress,
   onRegionChange,
   onUserDrag,
   padding,
   viewport,
-}: Pick<StationMapProps, 'compact' | 'onMapPress' | 'onRegionChange' | 'onUserDrag' | 'padding' | 'viewport'>) {
+}: Pick<StationMapProps, 'onMapPress' | 'onRegionChange' | 'onUserDrag' | 'padding' | 'viewport'>) {
   const map = useMap();
   const paddingRef = useRef(padding);
 
@@ -140,18 +142,7 @@ function MapBehaviour({
 
   useEffect(() => {
     map.attributionControl?.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
-
-    if (!compact) {
-      const zoom = L.control.zoom({ position: 'bottomright', zoomInTitle: 'Zoom +', zoomOutTitle: 'Zoom −' });
-
-      zoom.addTo(map);
-      return () => {
-        zoom.remove();
-      };
-    }
-
-    return undefined;
-  }, [compact, map]);
+  }, [map]);
 
   useEffect(() => {
     // Report the initial viewport once Leaflet has measured the container.
@@ -168,6 +159,11 @@ function MapBehaviour({
       paddingBottomRight: L.point(right, bottom),
       paddingTopLeft: L.point(left, top),
     };
+
+    if (viewport.target.kind === 'zoom') {
+      map.setZoom(map.getZoom() + viewport.target.delta);
+      return;
+    }
 
     if (viewport.target.kind === 'point') {
       const { latitude, longitude } = viewport.target.coordinates;
@@ -464,9 +460,6 @@ ${tierRules}
 .ps-user{position:absolute;left:0;top:0}
 .ps-user__dot{position:absolute;left:-7px;top:-7px;width:14px;height:14px;border-radius:50%;background:${colors.blue};box-shadow:0 0 0 3px #fff,0 1px 4px rgba(22,24,27,.4)}
 .ps-user__halo{position:absolute;left:-20px;top:-20px;width:40px;height:40px;border-radius:50%;background:rgba(10,74,143,.14)}
-.leaflet-control-zoom{border:0!important;border-radius:${radius.control}px!important;overflow:hidden;box-shadow:${shadows.floating.boxShadow}!important;margin:0 16px 16px 0!important}
-.leaflet-control-zoom a{width:40px!important;height:40px!important;line-height:40px!important;font-size:20px!important;color:${colors.black}!important;border-bottom-color:${colors.rule}!important}
-.leaflet-control-zoom a:hover{background:${colors.ground}!important}
 .leaflet-control-attribution{font-family:${fonts.regular},system-ui,sans-serif;font-size:11px;background:rgba(255,255,255,.85)!important;padding:1px 6px!important}
 .leaflet-control-attribution a{color:${colors.grey}!important}
 .ps-slat__arrow{width:8px;height:8px;margin:4px 0 0 3px}

@@ -5,13 +5,22 @@ import { BarlowCondensed_600SemiBold } from '@expo-google-fonts/barlow-condensed
 import { BarlowCondensed_700Bold } from '@expo-google-fonts/barlow-condensed/700Bold';
 import { useFonts } from 'expo-font';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  ActivityIndicator,
+  GestureResponderEvent,
+  Linking,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AboutModal } from './components/AboutModal';
 import { BrandMark, Wordmark } from './components/BrandMark';
 import { FuelPicker } from './components/FuelPicker';
-import { ChevronDown, ChevronUp, CircleAlert, LocateFixed, RefreshCw } from './components/icons';
+import { ChevronDown, ChevronUp, CircleAlert, LocateFixed, Minus, Plus, RefreshCw } from './components/icons';
 import { SearchBox } from './components/SearchBox';
 import { StationDetails } from './components/StationDetails';
 import { ListEntry, StationList } from './components/StationList';
@@ -46,6 +55,11 @@ const RECENT_CHANGE_MS = 30 * 60 * 1000;
 const CLOCK_TICK_MS = 30 * 1000;
 // The zone history follows the map: wait for the map to settle before asking for it.
 const HISTORY_DEBOUNCE_MS = 400;
+// Locate and zoom buttons share one width, so the desktop control column lines up.
+const MAP_CONTROL_SIZE = 40;
+// A finger moving this far on the sheet's grip is a swipe, not a tap.
+const SWIPE_DISTANCE = 32;
+const SWIPE_TAP_WINDOW_MS = 400;
 
 type SortMode = 'price' | 'distance';
 type LoadState = 'loading' | 'ready' | 'error';
@@ -168,6 +182,17 @@ function PleinSpot() {
     key: selected ? `${selected.id}|${dataVersion ?? ''}` : null,
     load: () => fetchStationHistory(selected!.id, dataVersion),
     scope: String(selected?.id ?? ''),
+  });
+  // Mobile sheet: up opens the list, down folds it, or closes the open station.
+  const sheetSwipe = useVerticalSwipe((direction) => {
+    if (selected) {
+      if (direction === 'down') {
+        setSelected(null);
+      }
+      return;
+    }
+
+    setIsSheetExpanded(direction === 'up');
   });
 
   const tokenRef = useRef(0);
@@ -487,6 +512,44 @@ function PleinSpot() {
     setRefreshKey((value) => value + 1);
   }
 
+  // The phone's back button (and the browser's) closes the open station instead of leaving the
+  // site: opening one adds a history entry, closing it from the page removes that entry.
+  const stationEntryRef = useRef(false);
+  const isStationOpen = selected != null;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (isStationOpen && !stationEntryRef.current) {
+      stationEntryRef.current = true;
+      window.history.pushState({ pleinspotStation: true }, '', window.location.href);
+    } else if (!isStationOpen && stationEntryRef.current) {
+      stationEntryRef.current = false;
+
+      if (window.history.state?.pleinspotStation) {
+        window.history.back();
+      }
+    }
+  }, [isStationOpen]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    function onPopState() {
+      if (stationEntryRef.current) {
+        stationEntryRef.current = false;
+        setSelected(null);
+      }
+    }
+
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
   // Escape closes the station panel.
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -723,8 +786,13 @@ function PleinSpot() {
             {noticeMessage}
           </View>
           <MapLegend language={language} />
-          <View style={styles.desktopLocate}>
-            <LocateButton isLocating={isLocating} label={t.app.locate} onPress={() => locateUser()} />
+          <View style={styles.desktopControls}>
+            <LocateButton isLocating={isLocating} label={t.app.locate} onPress={() => locateUser()} size={MAP_CONTROL_SIZE} />
+            <View style={[styles.zoomGroup, shadows.floating]}>
+              <ZoomButton icon={Plus} label={t.app.zoomIn} onPress={() => moveTo({ delta: 1, kind: 'zoom' })} />
+              <View style={styles.zoomRule} />
+              <ZoomButton icon={Minus} label={t.app.zoomOut} onPress={() => moveTo({ delta: -1, kind: 'zoom' })} />
+            </View>
           </View>
         </View>
         {about}
@@ -751,7 +819,8 @@ function PleinSpot() {
           </Pressable>
           <View style={styles.mobileSearch}>{searchBox}</View>
         </View>
-        <View style={styles.mobileFuel}>{fuelPicker('scroll')}</View>
+        {/* With a station open, its totem switches fuels: the row would only shrink the map. */}
+        {selected ? null : <View style={styles.mobileFuel}>{fuelPicker('scroll')}</View>}
       </View>
 
       <View pointerEvents="box-none" style={[styles.mobileStatus, { top: topOverlayHeight + 10 }]}>
@@ -762,13 +831,13 @@ function PleinSpot() {
 
       <View pointerEvents="box-none" style={[styles.mobileFloating, { bottom: sheetHeight + 12 }]}>
         <Text style={styles.mobileAttribution}>© OpenFreeMap · © OpenStreetMap</Text>
-        <LocateButton compact isLocating={isLocating} label={t.app.locate} onPress={() => locateUser()} />
+        <LocateButton isLocating={isLocating} label={t.app.locate} onPress={() => locateUser()} size={46} />
       </View>
 
       <View style={[styles.sheet, shadows.floating, { height: sheetHeight, paddingBottom: insets.bottom }]}>
         {selected ? (
           <>
-            <View style={styles.sheetHandleArea}>
+            <View {...sheetSwipe.handlers} style={styles.sheetHandleArea}>
               <View style={styles.sheetHandle} />
             </View>
             {stationDetails}
@@ -776,9 +845,14 @@ function PleinSpot() {
         ) : (
           <>
             <Pressable
+              {...sheetSwipe.handlers}
               accessibilityLabel={isSheetExpanded ? t.sheet.collapse : t.sheet.expand}
               accessibilityRole="button"
-              onPress={() => setIsSheetExpanded((value) => !value)}
+              onPress={() => {
+                if (!sheetSwipe.consumeSwipe()) {
+                  setIsSheetExpanded((value) => !value);
+                }
+              }}
               style={styles.sheetHeader}
             >
               <View style={styles.sheetHandle} />
@@ -866,6 +940,40 @@ function LiveLine({ isLive, label, language }: { isLive: boolean; label: string;
   );
 }
 
+/**
+ * A vertical swipe on the sheet's grip, the gesture phone users try before tapping. A swipe
+ * also ends with a tap on the same element: `consumeSwipe` tells the tap to stand down.
+ */
+function useVerticalSwipe(onSwipe: (direction: 'up' | 'down') => void) {
+  const startY = useRef<number | null>(null);
+  const swipedAt = useRef(0);
+
+  return {
+    consumeSwipe: () => {
+      const recent = Date.now() - swipedAt.current < SWIPE_TAP_WINDOW_MS;
+
+      swipedAt.current = 0;
+      return recent;
+    },
+    handlers: {
+      onTouchEnd: (event: GestureResponderEvent) => {
+        const start = startY.current;
+        const end = event.nativeEvent.changedTouches?.[0]?.pageY ?? event.nativeEvent.pageY;
+
+        startY.current = null;
+
+        if (start != null && Math.abs(end - start) >= SWIPE_DISTANCE) {
+          swipedAt.current = Date.now();
+          onSwipe(end < start ? 'up' : 'down');
+        }
+      },
+      onTouchStart: (event: GestureResponderEvent) => {
+        startY.current = event.nativeEvent.touches?.[0]?.pageY ?? event.nativeEvent.pageY;
+      },
+    },
+  };
+}
+
 // Stations sharing the same price share the same rank.
 function getRank(station: Station | null, stations: Station[], fuel: FuelKey) {
   const price = station?.prices[fuel]?.value;
@@ -887,35 +995,34 @@ function regionAround(coordinates: LatLng, delta: number): MapRegion {
 }
 
 function LocateButton({
-  compact = false,
   isLocating,
   label,
   onPress,
+  size,
 }: {
-  compact?: boolean;
   isLocating: boolean;
   label: string;
   onPress: () => void;
+  size: number;
 }) {
-  if (compact) {
-    return isLocating ? (
-      <View style={[styles.locateCompact, shadows.floating]}>
-        <ActivityIndicator color={colors.blue} size="small" />
-      </View>
-    ) : (
-      <IconButton icon={LocateFixed} label={label} onPress={onPress} size={46} tone="floating" />
-    );
-  }
+  return isLocating ? (
+    <View style={[styles.locating, shadows.floating, { height: size, width: size }]}>
+      <ActivityIndicator color={colors.blue} size="small" />
+    </View>
+  ) : (
+    <IconButton icon={LocateFixed} label={label} onPress={onPress} size={size} tone="floating" />
+  );
+}
 
+function ZoomButton({ icon: Icon, label, onPress }: { icon: typeof Plus; label: string; onPress: () => void }) {
   return (
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="button"
       onPress={onPress}
-      style={({ hovered }) => [styles.locate, shadows.floating, hovered && styles.locateHovered]}
+      style={({ hovered }) => [styles.zoomButton, hovered && styles.zoomButtonHovered]}
     >
-      {isLocating ? <ActivityIndicator color={colors.blue} size="small" /> : <LocateFixed color={colors.blue} size={18} />}
-      <Text style={styles.locateText}>{label}</Text>
+      <Icon color={colors.black} size={20} strokeWidth={2} />
     </Pressable>
   );
 }
@@ -999,8 +1106,10 @@ function ListSkeleton() {
 }
 
 const styles = StyleSheet.create({
-  desktopLocate: {
-    bottom: 108,
+  // One column of same-width controls, clear of the map credits below it.
+  desktopControls: {
+    bottom: 36,
+    gap: 8,
     position: 'absolute',
     right: 16,
   },
@@ -1155,30 +1264,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
   },
-  locate: {
+  locating: {
     alignItems: 'center',
     backgroundColor: colors.white,
     borderRadius: radius.control,
-    flexDirection: 'row',
-    gap: 8,
-    height: 42,
-    paddingHorizontal: 14,
-  },
-  locateCompact: {
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: radius.control,
-    height: 46,
     justifyContent: 'center',
-    width: 46,
-  },
-  locateHovered: {
-    backgroundColor: colors.ground,
-  },
-  locateText: {
-    color: colors.black,
-    fontFamily: fonts.semibold,
-    fontSize: type.small,
   },
   mapArea: {
     flex: 1,
@@ -1285,9 +1375,10 @@ const styles = StyleSheet.create({
     height: 4,
     width: 36,
   },
+  // Tall enough to grab with a thumb: swiping it down closes the station.
   sheetHandleArea: {
-    paddingBottom: 4,
-    paddingTop: 8,
+    paddingBottom: 10,
+    paddingTop: 10,
   },
   sheetHeader: {
     borderBottomColor: colors.rule,
@@ -1415,5 +1506,23 @@ const styles = StyleSheet.create({
     color: colors.black,
     fontFamily: fonts.medium,
     fontSize: type.small,
+  },
+  zoomButton: {
+    alignItems: 'center',
+    height: MAP_CONTROL_SIZE,
+    justifyContent: 'center',
+    width: MAP_CONTROL_SIZE,
+  },
+  zoomButtonHovered: {
+    backgroundColor: colors.ground,
+  },
+  zoomGroup: {
+    backgroundColor: colors.white,
+    borderRadius: radius.control,
+    overflow: 'hidden',
+  },
+  zoomRule: {
+    backgroundColor: colors.rule,
+    height: 1,
   },
 });

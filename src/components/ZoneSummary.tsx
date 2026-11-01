@@ -70,6 +70,7 @@ export function ZoneSummary({
       <View style={styles.periods}>
         <Segmented<ZonePeriod>
           accessibilityLabel={th.periodLabel}
+          fill
           onChange={onChangePeriod}
           options={[
             { label: th.today, value: 'today' },
@@ -104,7 +105,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   periods: {
-    alignSelf: 'flex-start',
     marginBottom: 16,
   },
   title: {

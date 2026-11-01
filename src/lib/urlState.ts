@@ -69,6 +69,7 @@ export function writeUrlState(state: { fuel: FuelKey; stationId: number | null; 
   const url = buildShareUrl({ ...state, stationId: state.stationId ?? undefined });
 
   if (url !== window.location.href) {
-    window.history.replaceState(null, '', url);
+    // Keep the entry's state: it marks the entry an open station added (see AppShell).
+    window.history.replaceState(window.history.state, '', url);
   }
 }

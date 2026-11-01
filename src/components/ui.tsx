@@ -95,17 +95,20 @@ export function Button({
 
 export function Segmented<T extends string | number>({
   accessibilityLabel,
+  fill = false,
   onChange,
   options,
   value,
 }: {
   accessibilityLabel?: string;
+  /** Spread the options over the whole width: four of them never overflow a 320 px screen. */
+  fill?: boolean;
   onChange: (value: T) => void;
   options: Array<{ label: string; value: T }>;
   value: T;
 }) {
   return (
-    <View accessibilityLabel={accessibilityLabel} accessibilityRole="radiogroup" style={styles.segmented}>
+    <View accessibilityLabel={accessibilityLabel} accessibilityRole="radiogroup" style={[styles.segmented, fill && styles.segmentedFill]}>
       {options.map((option, index) => {
         const isActive = option.value === value;
 
@@ -119,6 +122,7 @@ export function Segmented<T extends string | number>({
             style={({ hovered }) => [
               styles.segment,
               transition,
+              fill && styles.segmentFill,
               index > 0 && styles.segmentRule,
               hovered && !isActive && styles.segmentHovered,
               isActive && styles.segmentActive,
@@ -209,6 +213,11 @@ const styles = StyleSheet.create({
   segmentActive: {
     backgroundColor: colors.blueTint,
   },
+  segmentFill: {
+    alignItems: 'center',
+    flex: 1,
+    paddingHorizontal: 6,
+  },
   segmentHovered: {
     backgroundColor: colors.ground,
   },
@@ -231,6 +240,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: 'row',
     overflow: 'hidden',
+  },
+  segmentedFill: {
+    alignSelf: 'stretch',
   },
   sectionTitleRow: {
     alignItems: 'baseline',

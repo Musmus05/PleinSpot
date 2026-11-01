@@ -141,7 +141,7 @@ export function StationDetails({
           icon={shareFeedback ? Check : variant === 'sheet' ? Share : LinkIcon}
           label={shareFeedback ? t.details.copied : t.details.share}
           onPress={share}
-          size={38}
+          size={variant === 'sheet' ? 44 : 38}
         />
       </View>
 
@@ -370,8 +370,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 6,
     marginLeft: -8,
+    // A full 44 px thumb target, the floor for anything tapped on a phone.
+    minHeight: 44,
     paddingHorizontal: 8,
-    paddingVertical: 8,
   },
   backHovered: {
     backgroundColor: colors.blueTint,

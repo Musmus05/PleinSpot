@@ -26,6 +26,8 @@ const fr = {
     languageShort: 'EN',
     loading: 'Chargement des prix officiels…',
     locate: 'Autour de moi',
+    zoomIn: 'Zoom avant',
+    zoomOut: 'Zoom arrière',
     locationDenied:
       'Position refusée. Autorisez la géolocalisation dans votre navigateur, ou cherchez une ville.',
     locationUnavailable: 'Position indisponible pour le moment. Cherchez une ville à la place.',
@@ -207,6 +209,8 @@ const en: Copy = {
     languageShort: 'FR',
     loading: 'Loading official prices…',
     locate: 'Near me',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
     locationDenied: 'Location refused. Allow geolocation in your browser, or search for a city.',
     locationUnavailable: 'Location unavailable right now. Search for a city instead.',
     retry: 'Retry',
